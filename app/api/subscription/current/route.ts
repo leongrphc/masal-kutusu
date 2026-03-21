@@ -1,27 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { getUserSubscription } from '@/lib/subscription';
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+import { getUserSubscription } from "@/lib/subscription";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
     // Get user session
-    const authHeader = request.headers.get('authorization');
+    const authHeader = request.headers.get("authorization");
     if (!authHeader) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+        { error: "Unauthorized" },
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+        { error: "Unauthorized" },
+        {
+          status: 401,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
       );
     }
 
@@ -30,20 +40,40 @@ export async function GET(request: NextRequest) {
 
     if (!subscription) {
       return NextResponse.json(
-        { error: 'Abonelik bulunamadı' },
-        { status: 404, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+        { error: "Abonelik bulunamadı" },
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        },
       );
     }
 
     return NextResponse.json(
       { subscription },
-      { headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      {
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     );
   } catch (error: any) {
-    console.error('Subscription fetch error:', error);
+    console.error("Subscription fetch error:", error);
     return NextResponse.json(
-      { error: 'Abonelik bilgileri alınamadı.' },
-      { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      { error: "Abonelik bilgileri alınamadı." },
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     );
   }
 }
