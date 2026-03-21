@@ -1,13 +1,13 @@
+/* Custom Font Import - Premium Typography */
+@import url("https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Font Import - Premium Typography */
-@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap');
-
 :root {
-  --font-display: 'Comfortaa', system-ui, sans-serif;
-  --font-body: 'Quicksand', system-ui, sans-serif;
+  --font-display: "Comfortaa", system-ui, sans-serif;
+  --font-body: "Quicksand", system-ui, sans-serif;
 }
 
 @layer base {
@@ -20,7 +20,12 @@
     min-height: 100vh;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display;
   }
 }
@@ -65,7 +70,7 @@
   }
 
   .noise-overlay::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
