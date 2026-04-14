@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/MOZKAN/Desktop/**)",
+      "Bash(npx create-expo-app@latest masal-kutusu-mobile --template blank-typescript)",
+      "Bash(npx expo:*)",
+      "Bash(npm install:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8081)",
+      "Bash(taskkill:*)"
+    ]
+  }
+}
