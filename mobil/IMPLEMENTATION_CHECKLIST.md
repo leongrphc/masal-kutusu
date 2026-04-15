@@ -16,7 +16,7 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [x] Dashboard deneyimini iyileştir.
 - [x] Pricing deneyimini iyileştir.
 - [x] Form, loading ve hata durumlarını standardize et.
-- [ ] Test ve release hazırlığını güçlendir.
+- [x] Test ve release hazırlığını güçlendir.
 
 ## Backlog
 - [ ] Native in-app purchase gereksinimini netleştir.

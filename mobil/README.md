@@ -48,6 +48,33 @@ npm run ios
 npm run web
 ```
 
+## Kontrol Komutları
+
+```bash
+npm run typecheck
+npm run doctor
+npm run check
+```
+
+- `typecheck`: TypeScript tip kontrolünü çalıştırır.
+- `doctor`: Expo yapılandırmasını ve bağımlılık uyumunu kontrol eder.
+- `check`: release öncesi hızlı doğrulama için typecheck + doctor adımlarını birlikte çalıştırır.
+
+## Release Akışı
+
+```bash
+npm run build:preview:android
+npm run build:production:android
+npm run build:preview:ios
+npm run build:production:ios
+npm run submit:production:android
+```
+
+Notlar:
+- Android production submit için `mobil/google-service-account.json` dosyasını yerel olarak ekleyin. Bu dosya git'e dahil edilmez.
+- EAS build çalıştırmadan önce Expo hesabında oturum açmış olmanız gerekir.
+- iOS production dağıtımı için Apple tarafı kimlik bilgilerini EAS üzerinde tamamlamanız gerekir.
+
 ## Proje Yapısı
 
 ```
@@ -66,6 +93,8 @@ assets/                      # Uygulama görselleri ve ikonlar
 - Uygulama backend tarafındaki mevcut API endpoint'lerine bağlanır.
 - Environment değişkenleri tanımlı değilse uygulama başlarken hata verir.
 - Geliştirme sırasında API adresi olarak erişilebilir bir backend URL'i kullanın.
+- Release öncesinde en az `npm run check` komutunu çalıştırın.
+- Android submit için gereken servis hesabı anahtarını repo dışı tutun ve yalnızca yerel makinede kullanın.
 
 ## Lisans
 

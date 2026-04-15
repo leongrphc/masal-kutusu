@@ -27,6 +27,9 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 
+# Mobile release secrets
+mobil/google-service-account.json
+
 # Vercel
 .vercel
 

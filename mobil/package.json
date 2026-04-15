@@ -6,10 +6,18 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "doctor": "npx expo-doctor",
+    "check": "npm run typecheck && npm run doctor",
+    "build:preview:android": "eas build --platform android --profile preview",
+    "build:production:android": "eas build --platform android --profile production",
+    "build:preview:ios": "eas build --platform ios --profile preview",
+    "build:production:ios": "eas build --platform ios --profile production",
+    "submit:production:android": "eas submit --platform android --profile production"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^3.0.2",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.15.9",
     "@react-navigation/native": "^7.1.0",
     "@react-navigation/native-stack": "^7.3.0",
