@@ -10,7 +10,7 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [x] Mobile config yapılarını Expo environment değişkenlerine taşı.
 - [x] Mobile README içeriğini mevcut mimariye göre düzelt.
 - [x] Auth ve navigation akışını toparla.
-- [ ] Auth sonrası daha net mobil app shell kur.
+- [x] Auth sonrası daha net mobil app shell kur.
 - [ ] Masal geçmişi / kayıtlı içerik akışını ekle.
 - [ ] Audio player deneyimini güçlendir.
 - [ ] Dashboard deneyimini iyileştir.

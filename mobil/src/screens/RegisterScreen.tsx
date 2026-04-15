@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,18 +10,8 @@ import { Colors, BorderRadius } from '../constants/theme';
 
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
-  const { signUp, user, loading: authLoading } = useAuth();
+  const { signUp } = useAuth();
   const { colors } = useTheme();
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
-    }
-  }, [authLoading, navigation, user]);
-
-  if (user) {
-    return null;
-  }
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
