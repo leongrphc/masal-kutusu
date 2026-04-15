@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -38,20 +38,16 @@ export default function DashboardScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-    }
-  }, [user, authLoading]);
-
-  useEffect(() => {
-    if (user) fetchDashboardData();
-  }, [user]);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
+      setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setLoading(false); return; }
+      if (!session) {
+        setSubscription(null);
+        setTransactions([]);
+        setLoading(false);
+        return;
+      }
 
       const headers = { Authorization: `Bearer ${session.access_token}` };
 
@@ -79,7 +75,19 @@ export default function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        void fetchDashboardData();
+      }
+    }, [fetchDashboardData, user])
+  );
+
+  const handleCreateStory = () => navigation.navigate('CreateStory');
+  const handleOpenHistory = () => navigation.navigate('History');
+  const handleOpenPricing = () => navigation.navigate('Pricing');
 
   const handleSignOut = async () => {
     await signOut();
@@ -99,6 +107,10 @@ export default function DashboardScreen() {
   const creditsPercentage = subscription
     ? (subscription.credits_remaining / subscription.credits_total) * 100
     : 0;
+  const usageCount = transactions.filter((transaction) => transaction.type === 'usage').length;
+  const latestTransactionLabel = transactions[0]
+    ? new Date(transactions[0].created_at).toLocaleDateString('tr-TR')
+    : 'Henüz yok';
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Süresiz';
@@ -162,10 +174,37 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <Button title="Ana Sayfa" onPress={() => navigation.navigate('Home')} variant="secondary" />
+            <Button title="Masal Oluştur" onPress={handleCreateStory} variant="secondary" />
             <Button title="Çıkış" onPress={handleSignOut} variant="secondary" />
           </View>
         </View>
+
+        <GlassCard style={styles.overviewCard}>
+          <View style={styles.overviewHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Hesap Özeti</Text>
+              <Text style={[styles.overviewSubtext, { color: colors.textSecondary }]}>Son kullanım ve hesabınızın mevcut durumu tek bakışta burada.</Text>
+            </View>
+            <TouchableOpacity onPress={fetchDashboardData} style={[styles.refreshButton, { borderColor: colors.inputBorder, backgroundColor: colors.surface }]}>
+              <Text style={[styles.refreshButtonText, { color: colors.text }]}>Yenile</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.overviewMetrics}>
+            <View style={[styles.overviewMetricCard, { backgroundColor: 'rgba(255,127,80,0.08)' }]}>
+              <Text style={[styles.overviewMetricValue, { color: colors.text }]}>{subscription?.credits_remaining ?? 0}</Text>
+              <Text style={[styles.overviewMetricLabel, { color: colors.textSecondary }]}>Kalan kredi</Text>
+            </View>
+            <View style={[styles.overviewMetricCard, { backgroundColor: 'rgba(107,127,251,0.08)' }]}>
+              <Text style={[styles.overviewMetricValue, { color: colors.text }]}>{usageCount}</Text>
+              <Text style={[styles.overviewMetricLabel, { color: colors.textSecondary }]}>Toplam kullanım</Text>
+            </View>
+            <View style={[styles.overviewMetricCard, { backgroundColor: 'rgba(255,189,92,0.08)' }]}>
+              <Text style={[styles.overviewMetricValue, { color: colors.text }]}>{latestTransactionLabel}</Text>
+              <Text style={[styles.overviewMetricLabel, { color: colors.textSecondary }]}>Son işlem</Text>
+            </View>
+          </View>
+        </GlassCard>
 
         {/* Stats */}
         <View style={styles.statsGrid}>
@@ -179,7 +218,7 @@ export default function DashboardScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Pricing')}>
+            <TouchableOpacity onPress={handleOpenPricing}>
               <Text style={styles.upgradeLink}>Paketi Yükselt →</Text>
             </TouchableOpacity>
           </GlassCard>
@@ -227,11 +266,11 @@ export default function DashboardScreen() {
         </View>
 
         {/* Quick Actions */}
-        <GlassCard style={{ marginBottom: 16 }}>
+        <GlassCard style={styles.actionsCard}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Hızlı İşlemler</Text>
           <View style={styles.quickActions}>
             <TouchableOpacity
-              onPress={() => navigation.navigate('Home')}
+              onPress={handleCreateStory}
               style={[styles.actionCard, { backgroundColor: 'rgba(255,127,80,0.08)' }]}
             >
               <View style={[styles.actionIcon, { backgroundColor: Colors.primary[500] }]}>
@@ -244,7 +283,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => navigation.navigate('Pricing')}
+              onPress={handleOpenPricing}
               style={[styles.actionCard, { backgroundColor: 'rgba(107,127,251,0.08)' }]}
             >
               <View style={[styles.actionIcon, { backgroundColor: Colors.secondary[500] }]}>
@@ -256,15 +295,18 @@ export default function DashboardScreen() {
               </View>
             </TouchableOpacity>
 
-            <View style={[styles.actionCard, { backgroundColor: 'rgba(255,189,92,0.08)' }]}>
+            <TouchableOpacity
+              onPress={handleOpenHistory}
+              style={[styles.actionCard, { backgroundColor: 'rgba(255,189,92,0.08)' }]}
+            >
               <View style={[styles.actionIcon, { backgroundColor: Colors.warm[500] }]}>
-                <Text style={{ fontSize: 20 }}>💬</Text>
+                <Text style={{ fontSize: 20 }}>🕘</Text>
               </View>
               <View>
-                <Text style={[styles.actionTitle, { color: colors.text }]}>Destek</Text>
-                <Text style={[styles.actionSub, { color: colors.textSecondary }]}>Yardıma mı ihtiyacınız var?</Text>
+                <Text style={[styles.actionTitle, { color: colors.text }]}>Masal Geçmişi</Text>
+                <Text style={[styles.actionSub, { color: colors.textSecondary }]}>Önceki masallarına dön</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </GlassCard>
 
@@ -311,7 +353,33 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 16, paddingTop: 50, paddingBottom: 40 },
   loadingText: { marginTop: 12, fontSize: 14 },
 
-  header: { marginBottom: 24 },
+  header: { marginBottom: 16 },
+  overviewCard: { marginBottom: 16, gap: 16 },
+  overviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  overviewSubtext: { fontSize: 13, maxWidth: 240 },
+  refreshButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  refreshButtonText: { fontSize: 13, fontWeight: '600' },
+  overviewMetrics: { flexDirection: 'row', gap: 10 },
+  overviewMetricCard: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderRadius: BorderRadius.lg,
+    gap: 6,
+  },
+  overviewMetricValue: { fontSize: 16, fontWeight: '700' },
+  overviewMetricLabel: { fontSize: 12, fontWeight: '500' },
+
   title: { fontSize: 28, fontWeight: '700', marginBottom: 4 },
   email: { fontSize: 14 },
   headerActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
@@ -336,6 +404,7 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 16, fontWeight: '600' },
 
   sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  actionsCard: { marginBottom: 16 },
   quickActions: { gap: 12 },
   actionCard: {
     flexDirection: 'row',
