@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { LightTheme, DarkTheme } from '../constants/theme';
 
 type ThemeMode = 'light' | 'dark';
-type ThemeColors = typeof LightTheme;
+type ThemeColors = typeof LightTheme | typeof DarkTheme;
 
 interface ThemeContextType {
   mode: ThemeMode;

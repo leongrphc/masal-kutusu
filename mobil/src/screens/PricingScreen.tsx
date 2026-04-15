@@ -123,10 +123,7 @@ export default function PricingScreen() {
           return (
             <GlassCard
               key={planId}
-              style={[
-                styles.pricingCard,
-                isPopular && styles.popularCard,
-              ]}
+              style={isPopular ? [styles.pricingCard, styles.popularCard] : styles.pricingCard}
             >
               {isPopular && (
                 <LinearGradient

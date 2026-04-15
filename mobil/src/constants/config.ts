@@ -1,11 +1,16 @@
-export const SUPABASE_URL = 'https://hllwtfwpvwftylkwlvrs.supabase.co';
-export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsbHd0ZndwdndmdHlsa3dsdnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3OTQ5NzIsImV4cCI6MjA4MzM3MDk3Mn0.GHscaMmNAKVElHWQqPUkPwACAqA75cp7jBL0OM8yzoM';
+function requireEnv(name: 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE_ANON_KEY' | 'EXPO_PUBLIC_API_BASE_URL') {
+  const value = process.env[name];
 
-// Web backend'ten API çağrıları için
-// Geliştirme ortamında web sunucusunun adresini kullanın
-export const API_BASE_URL = __DEV__
-  ? 'http://192.168.1.106:3000' // Geliştirme (kendi IP adresinizi yazın)
-  : 'https://masal.mozkan.com.tr';  // Prodüksiyon
+  if (!value) {
+    throw new Error(`${name} is not set`);
+  }
+
+  return value;
+}
+
+export const SUPABASE_URL = requireEnv('EXPO_PUBLIC_SUPABASE_URL');
+export const SUPABASE_ANON_KEY = requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+export const API_BASE_URL = requireEnv('EXPO_PUBLIC_API_BASE_URL');
 
 export const SUBSCRIPTION_PLANS = {
   free: {
