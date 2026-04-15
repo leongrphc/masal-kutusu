@@ -3,7 +3,14 @@ type RequiredEnvName =
   | 'EXPO_PUBLIC_SUPABASE_ANON_KEY'
   | 'EXPO_PUBLIC_API_BASE_URL';
 
-type OptionalEnvName = 'EXPO_PUBLIC_SENTRY_DSN';
+type OptionalEnvName =
+  | 'EXPO_PUBLIC_SENTRY_DSN'
+  | 'EXPO_PUBLIC_IOS_BASIC_SUBSCRIPTION_SKU'
+  | 'EXPO_PUBLIC_ANDROID_BASIC_SUBSCRIPTION_SKU'
+  | 'EXPO_PUBLIC_IOS_PREMIUM_SUBSCRIPTION_SKU'
+  | 'EXPO_PUBLIC_ANDROID_PREMIUM_SUBSCRIPTION_SKU'
+  | 'EXPO_PUBLIC_IOS_UNLIMITED_SUBSCRIPTION_SKU'
+  | 'EXPO_PUBLIC_ANDROID_UNLIMITED_SUBSCRIPTION_SKU';
 
 function requireEnv(name: RequiredEnvName) {
   const value = process.env[name];
@@ -89,12 +96,37 @@ export const SUBSCRIPTION_PLANS = {
 } as const;
 
 export type SubscriptionPlanId = keyof typeof SUBSCRIPTION_PLANS;
+export type PaidSubscriptionPlanId = Exclude<SubscriptionPlanId, 'free'>;
 
 export const PLAN_HIERARCHY: Record<SubscriptionPlanId, number> = {
   free: 0,
   basic: 1,
   premium: 2,
   unlimited: 3,
+};
+
+export const PAID_SUBSCRIPTION_PLAN_IDS: PaidSubscriptionPlanId[] = [
+  'basic',
+  'premium',
+  'unlimited',
+];
+
+export const SUBSCRIPTION_BILLING_SKUS: Record<
+  PaidSubscriptionPlanId,
+  { ios?: string; android?: string }
+> = {
+  basic: {
+    ios: getOptionalEnv('EXPO_PUBLIC_IOS_BASIC_SUBSCRIPTION_SKU'),
+    android: getOptionalEnv('EXPO_PUBLIC_ANDROID_BASIC_SUBSCRIPTION_SKU'),
+  },
+  premium: {
+    ios: getOptionalEnv('EXPO_PUBLIC_IOS_PREMIUM_SUBSCRIPTION_SKU'),
+    android: getOptionalEnv('EXPO_PUBLIC_ANDROID_PREMIUM_SUBSCRIPTION_SKU'),
+  },
+  unlimited: {
+    ios: getOptionalEnv('EXPO_PUBLIC_IOS_UNLIMITED_SUBSCRIPTION_SKU'),
+    android: getOptionalEnv('EXPO_PUBLIC_ANDROID_UNLIMITED_SUBSCRIPTION_SKU'),
+  },
 };
 
 export const EXAMPLE_TOPICS = [

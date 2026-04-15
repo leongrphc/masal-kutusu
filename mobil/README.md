@@ -16,6 +16,7 @@
 - **Navigation**: React Navigation
 - **Backend**: Supabase Auth + mevcut web API backend'i
 - **Audio**: Expo AV
+- **Billing**: Expo IAP
 - **Language**: TypeScript
 
 ## Gereksinimler
@@ -37,6 +38,12 @@ cp .env.example .env.local
 EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 EXPO_PUBLIC_API_BASE_URL=https://your-api-base-url
+EXPO_PUBLIC_IOS_BASIC_SUBSCRIPTION_SKU=basic_monthly_ios_sku
+EXPO_PUBLIC_ANDROID_BASIC_SUBSCRIPTION_SKU=basic_monthly_android_sku
+EXPO_PUBLIC_IOS_PREMIUM_SUBSCRIPTION_SKU=premium_monthly_ios_sku
+EXPO_PUBLIC_ANDROID_PREMIUM_SUBSCRIPTION_SKU=premium_monthly_android_sku
+EXPO_PUBLIC_IOS_UNLIMITED_SUBSCRIPTION_SKU=unlimited_monthly_ios_sku
+EXPO_PUBLIC_ANDROID_UNLIMITED_SUBSCRIPTION_SKU=unlimited_monthly_android_sku
 ```
 
 ## Çalıştırma
@@ -101,10 +108,11 @@ assets/                      # Uygulama görselleri ve ikonlar
 
 ## Native IAP Kararı
 
-- Mevcut `PricingScreen` akışı `mobil/src/screens/PricingScreen.tsx` içinde doğrudan backend `POST /api/subscription/purchase` endpoint'ini çağırıyor.
-- Bu akış web veya kontrollü internal dağıtım için kullanılabilir, ancak App Store ve Google Play dağıtımı için uygulama içinde tüketilen dijital üyelik/paket satışlarında native mağaza faturalandırması gerekir.
-- Sonuç olarak ücretli planları store release ile yayınlamadan önce iOS tarafında Apple In-App Purchase, Android tarafında Google Play Billing entegrasyonu eklenmelidir.
-- Native billing eklenene kadar store sürümünde güvenli seçenek ücretsiz planı açık bırakıp ücretli plan satın alma CTA'larını kapatmaktır.
+- `PricingScreen` artık ücretli planlar için doğrudan backend `POST /api/subscription/purchase` endpoint'ini çağırmıyor; native billing foundation `mobil/src/lib/billing.ts` üzerinden ilerliyor.
+- Ücretli planlar için iOS/Android SKU değerleri environment üzerinden yönetilir ve store ürün sorgusu Expo IAP ile yapılır.
+- Şu anda backend receipt doğrulama / abonelik aktivasyon kontratı hazır olmadığı için ücretli CTA'lar güvenli biçimde bloklanır; kullanıcıya neden aktif olmadıkları açıkça gösterilir.
+- Gerçek satın alma testi için Expo Go yeterli değildir; development build veya release build gerekir.
+- Sonuç olarak store release öncesi hâlâ Apple In-App Purchase + Google Play Billing ürünleri ve backend doğrulama akışı tamamlanmalıdır.
 
 ## Crash Reporting Kararı
 
@@ -122,7 +130,7 @@ Release öncesi minimum kontrol listesi:
 - [ ] EAS için doğru hesap oturumu açık ve production profile hazır.
 - [ ] Android submit için `mobil/google-service-account.json` yerelde mevcut.
 - [ ] Uygulama ikonları, splash ve bundle/package kimlikleri (`app.json`) doğru.
-- [ ] Ücretli planlar store'a çıkacaksa Apple In-App Purchase ve Google Play Billing entegrasyonu tamamlandı; tamamlanmadıysa ücretli CTA'lar store sürümünde kapatıldı.
+- [ ] Ücretli planlar store'a çıkacaksa Apple In-App Purchase ve Google Play Billing ürünleri tanımlandı, `EXPO_PUBLIC_IOS_*` / `EXPO_PUBLIC_ANDROID_*` SKU değerleri production ortamında girildi ve backend receipt doğrulama tamamlandı; tamamlanmadıysa ücretli CTA'lar store sürümünde bloklu kaldı.
 - [ ] Sentry veya eşdeğer crash reporting çözümü production build'e eklendi.
 - [ ] Giriş, kayıt, masal oluşturma, geçmiş, dashboard ve pricing akışları gerçek cihaz/emülatörde smoke test edildi.
 - [ ] `npm run build:production:android` ve gerekiyorsa `npm run build:production:ios` ile release build alındı.

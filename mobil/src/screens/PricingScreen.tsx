@@ -19,11 +19,22 @@ import {
   PLAN_HIERARCHY,
   API_BASE_URL,
   type SubscriptionPlanId,
+  type PaidSubscriptionPlanId,
 } from '../constants/config';
+import {
+  getAllBillingAvailability,
+  startPlanPurchase,
+  type BillingPlanAvailability,
+} from '../lib/billing';
 
 interface Subscription {
   plan: SubscriptionPlanId;
   status: string;
+}
+
+interface FeedbackState {
+  type: 'error' | 'info';
+  message: string;
 }
 
 export default function PricingScreen() {
@@ -33,37 +44,67 @@ export default function PricingScreen() {
 
   const [loading, setLoading] = useState<string | null>(null);
   const [screenLoading, setScreenLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [billingAvailability, setBillingAvailability] = useState<
+    Partial<Record<PaidSubscriptionPlanId, BillingPlanAvailability>>
+  >({});
 
   const fetchSubscription = useCallback(async () => {
     if (!session) {
-      setSubscription(null);
-      setScreenLoading(false);
-      return;
+      return null;
     }
 
     try {
-      setScreenLoading(true);
       const response = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setSubscription(data.subscription);
+      if (!response.ok) {
+        return null;
       }
+
+      const data = await response.json();
+      return (data.subscription ?? null) as Subscription | null;
     } catch (err) {
       console.error('Subscription fetch error:', err);
-    } finally {
-      setScreenLoading(false);
+      return null;
     }
   }, [session]);
 
+  const fetchBillingAvailability = useCallback(async () => {
+    try {
+      return await getAllBillingAvailability();
+    } catch (err) {
+      console.error('Billing availability error:', err);
+      return {} as Partial<Record<PaidSubscriptionPlanId, BillingPlanAvailability>>;
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      void fetchSubscription();
-    }, [fetchSubscription])
+      let isActive = true;
+
+      void (async () => {
+        setScreenLoading(true);
+        const [nextSubscription, nextAvailability] = await Promise.all([
+          fetchSubscription(),
+          fetchBillingAvailability(),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        setSubscription(nextSubscription);
+        setBillingAvailability(nextAvailability);
+        setScreenLoading(false);
+      })();
+
+      return () => {
+        isActive = false;
+      };
+    }, [fetchBillingAvailability, fetchSubscription]),
   );
 
   const handlePurchase = async (planId: SubscriptionPlanId) => {
@@ -77,28 +118,26 @@ export default function PricingScreen() {
     }
 
     setLoading(planId);
-    setError(null);
+    setFeedback(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/subscription/purchase`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ planId }),
+      const result = await startPlanPurchase(planId);
+      setFeedback({
+        type: result.status === 'started' || result.status === 'cancelled' ? 'info' : 'error',
+        message: result.message,
       });
 
-      const data = await response.json();
+      const [nextSubscription, nextAvailability] = await Promise.all([
+        fetchSubscription(),
+        fetchBillingAvailability(),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Satın alma başarısız');
+      setSubscription(nextSubscription);
+      setBillingAvailability(nextAvailability);
+
+      if (result.status === 'started') {
+        navigation.goBack();
       }
-
-      await fetchSubscription();
-      navigation.goBack();
-    } catch (err: any) {
-      setError(err.message || 'Satın alma başarısız');
     } finally {
       setLoading(null);
     }
@@ -108,9 +147,10 @@ export default function PricingScreen() {
     planId: SubscriptionPlanId,
     isCurrent: boolean,
     isDowngrade: boolean,
+    availability?: BillingPlanAvailability,
   ) => {
-    if (!user) {
-      return planId === 'free' ? 'Giriş Yap' : 'Giriş Yap ve Satın Al';
+    if (screenLoading && planId !== 'free') {
+      return 'Mağaza Kontrol Ediliyor';
     }
 
     if (isCurrent) {
@@ -122,10 +162,20 @@ export default function PricingScreen() {
     }
 
     if (planId === 'free') {
-      return 'Ücretsiz Başla';
+      return user ? 'Ücretsiz Başla' : 'Giriş Yap';
     }
 
-    return 'Paketi Seç';
+    if (!availability?.canPurchase) {
+      return availability?.blockReason === 'unsupported-platform'
+        ? 'Native Build Gerekli'
+        : 'Yakında Aktif';
+    }
+
+    if (!user) {
+      return 'Giriş Yap ve Satın Al';
+    }
+
+    return 'Store ile Satın Al';
   };
 
   const currentPlanName = subscription ? SUBSCRIPTION_PLANS[subscription.plan].name : null;
@@ -144,14 +194,14 @@ export default function PricingScreen() {
 
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Üyelik Paketleri</Text>
-          <Text style={[styles.headerSub, { color: colors.textSecondary }]}>İhtiyacınıza göre plan seçin, daha fazla masal ve krediye anında ulaşın.</Text>
+          <Text style={[styles.headerSub, { color: colors.textSecondary }]}>İhtiyacınıza göre plan seçin. Ücretli planlar artık native store billing altyapısı üzerinden hazırlanıyor.</Text>
         </View>
 
         <GlassCard style={styles.summaryCard}>
           {screenLoading ? (
             <View style={styles.summaryLoadingState}>
               <ActivityIndicator size="small" color={Colors.primary[500]} />
-              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Paket bilgileriniz yükleniyor...</Text>
+              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Paket ve mağaza bilgileriniz yükleniyor...</Text>
             </View>
           ) : user && subscription ? (
             <>
@@ -164,12 +214,12 @@ export default function PricingScreen() {
                   <Text style={styles.summaryBadgeText}>{currentPlanName}</Text>
                 </View>
               </View>
-              <Text style={[styles.summaryHelper, { color: colors.textMuted }]}>Yükseltme işlemi hemen uygulanır. Daha düşük pakete geçiş bu ekranda kapalıdır.</Text>
+              <Text style={[styles.summaryHelper, { color: colors.textMuted }]}>Yükseltme store satın alma akışıyla ilerleyecek. Daha düşük pakete geçiş bu ekranda kapalıdır.</Text>
             </>
           ) : (
             <>
               <Text style={[styles.summaryTitle, { color: colors.text }]}>Satın almak için giriş yapın</Text>
-              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Paket seçimi yapabilir, ardından giriş ekranına geçerek hesabınız üzerinden satın alma işlemini tamamlayabilirsiniz.</Text>
+              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Önce hesabınıza giriş yapın. Ardından ücretsiz planı kullanabilir veya mağaza tarafı hazır olan planları seçebilirsiniz.</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Login')}
                 style={[styles.loginPromptButton, { borderColor: colors.inputBorder, backgroundColor: colors.surface }]}
@@ -180,11 +230,23 @@ export default function PricingScreen() {
           )}
         </GlassCard>
 
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+        {feedback ? (
+          <View
+            style={[
+              styles.feedbackBox,
+              feedback.type === 'error' ? styles.errorBox : styles.infoBox,
+            ]}
+          >
+            <Text
+              style={[
+                styles.feedbackText,
+                { color: feedback.type === 'error' ? '#DC2626' : '#1D4ED8' },
+              ]}
+            >
+              {feedback.message}
+            </Text>
           </View>
-        )}
+        ) : null}
 
         {Object.entries(SUBSCRIPTION_PLANS).map(([id, plan]) => {
           const planId = id as SubscriptionPlanId;
@@ -194,14 +256,21 @@ export default function PricingScreen() {
           const thisTier = PLAN_HIERARCHY[planId];
           const isDowngrade = currentTier > thisTier;
           const isCurrent = subscription?.plan === planId;
-          const isDisabled = isLoading || isCurrent || (user ? isDowngrade : false);
+          const availability = planId === 'free' ? undefined : billingAvailability[planId];
+          const billingBlocked = planId !== 'free' && (!availability?.canPurchase || screenLoading);
+          const isDisabled = isLoading || isCurrent || (user ? isDowngrade : false) || billingBlocked;
+          const footnote = isCurrent
+            ? 'Bu paket şu anda hesabınıza tanımlı.'
+            : isDowngrade
+              ? 'Mevcut planınızdan daha düşük bir pakete bu ekrandan geçiş yapılamaz.'
+              : availability?.message ?? null;
 
           return (
             <GlassCard
               key={planId}
               style={isPopular ? [styles.pricingCard, styles.popularCard] : styles.pricingCard}
             >
-              {isPopular && (
+              {isPopular ? (
                 <LinearGradient
                   colors={[Colors.primary[500], Colors.warm[500]]}
                   start={{ x: 0, y: 0 }}
@@ -210,7 +279,7 @@ export default function PricingScreen() {
                 >
                   <Text style={styles.popularBadgeText}>⭐ Popüler</Text>
                 </LinearGradient>
-              )}
+              ) : null}
 
               <View style={styles.planHeader}>
                 <View>
@@ -225,22 +294,22 @@ export default function PricingScreen() {
                           : 'Yoğun kullanım için en yüksek limitli paket.'}
                   </Text>
                 </View>
-                {isCurrent && (
+                {isCurrent ? (
                   <View style={[styles.currentBadge, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
                     <Text style={styles.currentBadgeText}>Aktif Plan</Text>
                   </View>
-                )}
+                ) : null}
               </View>
 
               <View style={styles.priceRow}>
                 <Text style={styles.priceAmount}>₺{plan.price}</Text>
-                {planId !== 'free' && (
+                {planId !== 'free' ? (
                   <Text style={[styles.priceUnit, { color: colors.textMuted }]}>/ay</Text>
-                )}
+                ) : null}
               </View>
-              {planId === 'free' && (
+              {planId === 'free' ? (
                 <Text style={[styles.freeLabel, { color: colors.textMuted }]}>Her zaman ücretsiz</Text>
-              )}
+              ) : null}
 
               <View style={styles.creditsRow}>
                 <Text style={styles.creditsAmount}>
@@ -280,7 +349,9 @@ export default function PricingScreen() {
                     {isLoading ? (
                       <ActivityIndicator color={Colors.white} />
                     ) : (
-                      <Text style={styles.purchaseBtnText}>{getPlanActionLabel(planId, isCurrent, isDowngrade)}</Text>
+                      <Text style={styles.purchaseBtnText}>
+                        {getPlanActionLabel(planId, isCurrent, isDowngrade, availability)}
+                      </Text>
                     )}
                   </LinearGradient>
                 ) : (
@@ -289,27 +360,23 @@ export default function PricingScreen() {
                       <ActivityIndicator color={Colors.neutral[700]} />
                     ) : (
                       <Text style={[styles.purchaseBtnSecondaryText, { color: isDisabled ? colors.textMuted : colors.text }]}>
-                        {getPlanActionLabel(planId, isCurrent, isDowngrade)}
+                        {getPlanActionLabel(planId, isCurrent, isDowngrade, availability)}
                       </Text>
                     )}
                   </View>
                 )}
               </TouchableOpacity>
 
-              {(isCurrent || isDowngrade) && (
-                <Text style={[styles.planFootnote, { color: colors.textMuted }]}>
-                  {isCurrent
-                    ? 'Bu paket şu anda hesabınıza tanımlı.'
-                    : 'Mevcut planınızdan daha düşük bir pakete bu ekrandan geçiş yapılamaz.'}
-                </Text>
-              )}
+              {footnote ? (
+                <Text style={[styles.planFootnote, { color: colors.textMuted }]}>{footnote}</Text>
+              ) : null}
             </GlassCard>
           );
         })}
 
         <GlassCard style={styles.infoCard}>
           <Text style={[styles.infoTitle, { color: colors.text }]}>💡 Bilgi</Text>
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Tüm paketler mevcut backend satın alma akışıyla hemen etkinleşir. Ücretsiz plandan ücretli plana geçiş anında uygulanır.</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Ücretli planlar artık doğrudan backend satın alma çağrısı yapmaz. Store SKU tanımları ve backend receipt doğrulama tamamlandığında aynı ekran üzerinden native satın alma açılacaktır.</Text>
           <Text style={[styles.infoContact, { color: colors.textMuted }]}>Sorularınız için: destek@masalkutusu.com</Text>
         </GlassCard>
       </ScrollView>
@@ -345,15 +412,21 @@ const styles = StyleSheet.create({
   },
   loginPromptButtonText: { fontSize: 14, fontWeight: '600' },
 
-  errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
+  feedbackBox: {
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.3)',
     borderRadius: BorderRadius.md,
     padding: 12,
     marginBottom: 16,
   },
-  errorText: { color: '#DC2626', fontSize: 13, fontWeight: '600' },
+  errorBox: {
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    borderColor: 'rgba(239,68,68,0.3)',
+  },
+  infoBox: {
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    borderColor: 'rgba(59,130,246,0.25)',
+  },
+  feedbackText: { fontSize: 13, fontWeight: '600' },
 
   pricingCard: {
     marginBottom: 16,
