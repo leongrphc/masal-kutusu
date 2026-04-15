@@ -83,7 +83,6 @@ export default function DashboardScreen() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   };
 
   if (authLoading || loading) {

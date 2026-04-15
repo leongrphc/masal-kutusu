@@ -36,7 +36,7 @@ interface Subscription {
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
-  const { user, session, signOut } = useAuth();
+  const { user, session } = useAuth();
   const { colors, mode, toggleTheme } = useTheme();
 
   const [subscription, setSubscription] = useState<Subscription | null>(null);

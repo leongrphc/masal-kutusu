@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { GradientBackground } from '../components/GradientBackground';
@@ -10,8 +10,18 @@ import { Colors, BorderRadius } from '../constants/theme';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
-  const { signIn } = useAuth();
+  const { signIn, user, loading: authLoading } = useAuth();
   const { colors } = useTheme();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
+    }
+  }, [authLoading, navigation, user]);
+
+  if (user) {
+    return null;
+  }
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +38,7 @@ export default function LoginScreen() {
       setError(error.message || 'Giriş başarısız');
       setLoading(false);
     } else {
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
     }
   };
 
