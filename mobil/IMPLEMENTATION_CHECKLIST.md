@@ -21,5 +21,6 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 ## Backlog
 - [x] Native in-app purchase gereksinimini netleştir.
 - [ ] Apple In-App Purchase ve Google Play Billing entegrasyonunu ekle.
-- [ ] Crash/reporting çözümü değerlendir.
+- [x] Crash/reporting çözümü değerlendir.
+- [ ] Sentry crash reporting entegrasyonunu ekle.
 - [ ] Store release checklist oluştur.

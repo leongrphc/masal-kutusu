@@ -103,6 +103,13 @@ assets/                      # Uygulama görselleri ve ikonlar
 - Sonuç olarak ücretli planları store release ile yayınlamadan önce iOS tarafında Apple In-App Purchase, Android tarafında Google Play Billing entegrasyonu eklenmelidir.
 - Native billing eklenene kadar store sürümünde güvenli seçenek ücretsiz planı açık bırakıp ücretli plan satın alma CTA'larını kapatmaktır.
 
+## Crash Reporting Kararı
+
+- Şu anda uygulama hataları çoğunlukla `console.error` ile loglanıyor (`AuthContext`, `HomeScreen`, `DashboardScreen`, `PricingScreen`, `AudioPlayer`) ve store release için uzaktan hata takibi yok.
+- Expo tabanlı mevcut yapı için en uygun ilk çözüm Sentry'dir; Expo ve EAS akışıyla uyumludur, release build hata/crash takibi ve source map yükleme desteği sağlar.
+- Bu nedenle store release öncesi önerilen yol Sentry entegrasyonu eklemek, DSN bilgisini environment üzerinden yönetmek ve en kritik auth/subscription/story/audio akışlarında hata bağlamı göndermektir.
+- Sentry eklenene kadar mevcut durum yalnızca lokal debug seviyesinde görünürlük sağlar; production crash analizi için yeterli değildir.
+
 ## Lisans
 
 MIT
