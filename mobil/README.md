@@ -96,6 +96,13 @@ assets/                      # Uygulama görselleri ve ikonlar
 - Release öncesinde en az `npm run check` komutunu çalıştırın.
 - Android submit için gereken servis hesabı anahtarını repo dışı tutun ve yalnızca yerel makinede kullanın.
 
+## Native IAP Kararı
+
+- Mevcut `PricingScreen` akışı `mobil/src/screens/PricingScreen.tsx` içinde doğrudan backend `POST /api/subscription/purchase` endpoint'ini çağırıyor.
+- Bu akış web veya kontrollü internal dağıtım için kullanılabilir, ancak App Store ve Google Play dağıtımı için uygulama içinde tüketilen dijital üyelik/paket satışlarında native mağaza faturalandırması gerekir.
+- Sonuç olarak ücretli planları store release ile yayınlamadan önce iOS tarafında Apple In-App Purchase, Android tarafında Google Play Billing entegrasyonu eklenmelidir.
+- Native billing eklenene kadar store sürümünde güvenli seçenek ücretsiz planı açık bırakıp ücretli plan satın alma CTA'larını kapatmaktır.
+
 ## Lisans
 
 MIT

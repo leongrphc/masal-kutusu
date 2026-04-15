@@ -19,6 +19,7 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [x] Test ve release hazırlığını güçlendir.
 
 ## Backlog
-- [ ] Native in-app purchase gereksinimini netleştir.
+- [x] Native in-app purchase gereksinimini netleştir.
+- [ ] Apple In-App Purchase ve Google Play Billing entegrasyonunu ekle.
 - [ ] Crash/reporting çözümü değerlendir.
 - [ ] Store release checklist oluştur.
