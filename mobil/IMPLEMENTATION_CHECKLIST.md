@@ -23,4 +23,4 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [ ] Apple In-App Purchase ve Google Play Billing entegrasyonunu ekle.
 - [x] Crash/reporting çözümü değerlendir.
 - [ ] Sentry crash reporting entegrasyonunu ekle.
-- [ ] Store release checklist oluştur.
+- [x] Store release checklist oluştur.

@@ -110,6 +110,21 @@ assets/                      # Uygulama görselleri ve ikonlar
 - Bu nedenle store release öncesi önerilen yol Sentry entegrasyonu eklemek, DSN bilgisini environment üzerinden yönetmek ve en kritik auth/subscription/story/audio akışlarında hata bağlamı göndermektir.
 - Sentry eklenene kadar mevcut durum yalnızca lokal debug seviyesinde görünürlük sağlar; production crash analizi için yeterli değildir.
 
+## Store Release Checklist
+
+Release öncesi minimum kontrol listesi:
+
+- [ ] `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` ve `EXPO_PUBLIC_API_BASE_URL` production değerleri tanımlı.
+- [ ] `npm run check` başarılı.
+- [ ] EAS için doğru hesap oturumu açık ve production profile hazır.
+- [ ] Android submit için `mobil/google-service-account.json` yerelde mevcut.
+- [ ] Uygulama ikonları, splash ve bundle/package kimlikleri (`app.json`) doğru.
+- [ ] Ücretli planlar store'a çıkacaksa Apple In-App Purchase ve Google Play Billing entegrasyonu tamamlandı; tamamlanmadıysa ücretli CTA'lar store sürümünde kapatıldı.
+- [ ] Sentry veya eşdeğer crash reporting çözümü production build'e eklendi.
+- [ ] Giriş, kayıt, masal oluşturma, geçmiş, dashboard ve pricing akışları gerçek cihaz/emülatörde smoke test edildi.
+- [ ] `npm run build:production:android` ve gerekiyorsa `npm run build:production:ios` ile release build alındı.
+- [ ] Store açıklamaları, ekran görüntüleri, gizlilik/policy alanları ve destek iletişimi güncel.
+
 ## Lisans
 
 MIT
