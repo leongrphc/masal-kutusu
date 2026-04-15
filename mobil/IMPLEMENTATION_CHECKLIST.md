@@ -14,7 +14,7 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [x] Masal geçmişi / kayıtlı içerik akışını ekle.
 - [x] Audio player deneyimini güçlendir.
 - [x] Dashboard deneyimini iyileştir.
-- [ ] Pricing deneyimini iyileştir.
+- [x] Pricing deneyimini iyileştir.
 - [ ] Form, loading ve hata durumlarını standardize et.
 - [ ] Test ve release hazırlığını güçlendir.
 

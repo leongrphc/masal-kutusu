@@ -1,17 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { GradientBackground } from '../components/GradientBackground';
 import { GlassCard } from '../components/GlassCard';
-import { Button } from '../components/Button';
 import { Colors, BorderRadius } from '../constants/theme';
 import {
-  SUBSCRIPTION_PLANS, PLAN_HIERARCHY, API_BASE_URL,
+  SUBSCRIPTION_PLANS,
+  PLAN_HIERARCHY,
+  API_BASE_URL,
   type SubscriptionPlanId,
 } from '../constants/config';
 
@@ -26,26 +32,39 @@ export default function PricingScreen() {
   const { colors } = useTheme();
 
   const [loading, setLoading] = useState<string | null>(null);
+  const [screenLoading, setScreenLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
 
-  useEffect(() => {
-    const fetchSubscription = async () => {
-      if (!session) return;
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setSubscription(data.subscription);
-        }
-      } catch (err) {
-        console.error('Subscription fetch error:', err);
+  const fetchSubscription = useCallback(async () => {
+    if (!session) {
+      setSubscription(null);
+      setScreenLoading(false);
+      return;
+    }
+
+    try {
+      setScreenLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubscription(data.subscription);
       }
-    };
-    fetchSubscription();
+    } catch (err) {
+      console.error('Subscription fetch error:', err);
+    } finally {
+      setScreenLoading(false);
+    }
   }, [session]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchSubscription();
+    }, [fetchSubscription])
+  );
 
   const handlePurchase = async (planId: SubscriptionPlanId) => {
     if (!user || !session) {
@@ -53,7 +72,9 @@ export default function PricingScreen() {
       return;
     }
 
-    if (planId === 'free') return;
+    if (planId === 'free') {
+      return;
+    }
 
     setLoading(planId);
     setError(null);
@@ -74,13 +95,40 @@ export default function PricingScreen() {
         throw new Error(data.error || 'Satın alma başarısız');
       }
 
-      navigation.navigate('Dashboard');
+      await fetchSubscription();
+      navigation.goBack();
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Satın alma başarısız');
     } finally {
       setLoading(null);
     }
   };
+
+  const getPlanActionLabel = (
+    planId: SubscriptionPlanId,
+    isCurrent: boolean,
+    isDowngrade: boolean,
+  ) => {
+    if (!user) {
+      return planId === 'free' ? 'Giriş Yap' : 'Giriş Yap ve Satın Al';
+    }
+
+    if (isCurrent) {
+      return 'Mevcut Paket';
+    }
+
+    if (isDowngrade) {
+      return 'Düşüş Desteklenmiyor';
+    }
+
+    if (planId === 'free') {
+      return 'Ücretsiz Başla';
+    }
+
+    return 'Paketi Seç';
+  };
+
+  const currentPlanName = subscription ? SUBSCRIPTION_PLANS[subscription.plan].name : null;
 
   return (
     <GradientBackground>
@@ -89,27 +137,54 @@ export default function PricingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Back Button */}
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: colors.textSecondary }]}>← Geri Dön</Text>
         </TouchableOpacity>
 
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Üyelik Paketleri</Text>
-          <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-            Çocuğunuz için sınırsız masallar. Size en uygun paketi seçin.
-          </Text>
+          <Text style={[styles.headerSub, { color: colors.textSecondary }]}>İhtiyacınıza göre plan seçin, daha fazla masal ve krediye anında ulaşın.</Text>
         </View>
 
-        {/* Error */}
+        <GlassCard style={styles.summaryCard}>
+          {screenLoading ? (
+            <View style={styles.summaryLoadingState}>
+              <ActivityIndicator size="small" color={Colors.primary[500]} />
+              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Paket bilgileriniz yükleniyor...</Text>
+            </View>
+          ) : user && subscription ? (
+            <>
+              <View style={styles.summaryHeader}>
+                <View>
+                  <Text style={[styles.summaryTitle, { color: colors.text }]}>Mevcut Paketiniz</Text>
+                  <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Şu an {currentPlanName} planını kullanıyorsunuz.</Text>
+                </View>
+                <View style={[styles.summaryBadge, { backgroundColor: Colors.primary[500] }]}>
+                  <Text style={styles.summaryBadgeText}>{currentPlanName}</Text>
+                </View>
+              </View>
+              <Text style={[styles.summaryHelper, { color: colors.textMuted }]}>Yükseltme işlemi hemen uygulanır. Daha düşük pakete geçiş bu ekranda kapalıdır.</Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.summaryTitle, { color: colors.text }]}>Satın almak için giriş yapın</Text>
+              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Paket seçimi yapabilir, ardından giriş ekranına geçerek hesabınız üzerinden satın alma işlemini tamamlayabilirsiniz.</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Login')}
+                style={[styles.loginPromptButton, { borderColor: colors.inputBorder, backgroundColor: colors.surface }]}
+              >
+                <Text style={[styles.loginPromptButtonText, { color: colors.text }]}>Giriş Ekranına Git</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </GlassCard>
+
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 
-        {/* Pricing Cards */}
         {Object.entries(SUBSCRIPTION_PLANS).map(([id, plan]) => {
           const planId = id as SubscriptionPlanId;
           const isPopular = planId === 'premium';
@@ -118,7 +193,7 @@ export default function PricingScreen() {
           const thisTier = PLAN_HIERARCHY[planId];
           const isDowngrade = currentTier > thisTier;
           const isCurrent = subscription?.plan === planId;
-          const isDisabled = isLoading || isCurrent || isDowngrade;
+          const isDisabled = isLoading || isCurrent || (user ? isDowngrade : false);
 
           return (
             <GlassCard
@@ -136,7 +211,26 @@ export default function PricingScreen() {
                 </LinearGradient>
               )}
 
-              <Text style={[styles.planName, { color: colors.text }]}>{plan.name}</Text>
+              <View style={styles.planHeader}>
+                <View>
+                  <Text style={[styles.planName, { color: colors.text }]}>{plan.name}</Text>
+                  <Text style={[styles.planCaption, { color: colors.textSecondary }]}>
+                    {planId === 'free'
+                      ? 'Masal Kutusu’nu denemek için ideal başlangıç planı.'
+                      : planId === 'basic'
+                        ? 'Düzenli kullanım için dengeli kredi paketi.'
+                        : planId === 'premium'
+                          ? 'En güçlü deneyim için önerilen seçim.'
+                          : 'Yoğun kullanım için en yüksek limitli paket.'}
+                  </Text>
+                </View>
+                {isCurrent && (
+                  <View style={[styles.currentBadge, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
+                    <Text style={styles.currentBadgeText}>Aktif Plan</Text>
+                  </View>
+                )}
+              </View>
+
               <View style={styles.priceRow}>
                 <Text style={styles.priceAmount}>₺{plan.price}</Text>
                 {planId !== 'free' && (
@@ -152,34 +246,40 @@ export default function PricingScreen() {
                   {plan.credits === 999999 ? '∞' : plan.credits}
                 </Text>
                 <Text style={[styles.creditsPeriod, { color: colors.textSecondary }]}>
-                  {plan.creditReset === 'daily' ? 'günlük' : plan.creditReset === 'monthly' ? 'aylık' : ''} masal
+                  {plan.creditReset === 'daily'
+                    ? 'günlük masal'
+                    : plan.creditReset === 'monthly'
+                      ? 'aylık masal'
+                      : 'sınırsız erişim'}
                 </Text>
               </View>
 
-              {plan.features.map((feature, i) => (
-                <View key={i} style={styles.featureRow}>
-                  <Text style={styles.featureCheck}>✅</Text>
-                  <Text style={[styles.featureText, { color: colors.textSecondary }]}>{feature}</Text>
-                </View>
-              ))}
+              <View style={styles.featuresList}>
+                {plan.features.map((feature, i) => (
+                  <View key={i} style={styles.featureRow}>
+                    <Text style={styles.featureCheck}>✅</Text>
+                    <Text style={[styles.featureText, { color: colors.textSecondary }]}>{feature}</Text>
+                  </View>
+                ))}
+              </View>
 
               <TouchableOpacity
                 onPress={() => handlePurchase(planId)}
                 disabled={isDisabled}
                 activeOpacity={0.8}
-                style={{ marginTop: 16 }}
+                style={styles.purchaseContainer}
               >
                 {isPopular && !isDisabled ? (
                   <LinearGradient
                     colors={[Colors.primary[500], Colors.warm[500]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={[styles.purchaseBtn, isDisabled && styles.disabledBtn]}
+                    style={styles.purchaseBtn}
                   >
                     {isLoading ? (
                       <ActivityIndicator color={Colors.white} />
                     ) : (
-                      <Text style={styles.purchaseBtnText}>Satın Al</Text>
+                      <Text style={styles.purchaseBtnText}>{getPlanActionLabel(planId, isCurrent, isDowngrade)}</Text>
                     )}
                   </LinearGradient>
                 ) : (
@@ -188,26 +288,28 @@ export default function PricingScreen() {
                       <ActivityIndicator color={Colors.neutral[700]} />
                     ) : (
                       <Text style={[styles.purchaseBtnSecondaryText, { color: isDisabled ? colors.textMuted : colors.text }]}>
-                        {isCurrent ? 'Mevcut Paket' : isDowngrade ? 'Daha Düşük Paket' : 'Satın Al'}
+                        {getPlanActionLabel(planId, isCurrent, isDowngrade)}
                       </Text>
                     )}
                   </View>
                 )}
               </TouchableOpacity>
+
+              {(isCurrent || isDowngrade) && (
+                <Text style={[styles.planFootnote, { color: colors.textMuted }]}>
+                  {isCurrent
+                    ? 'Bu paket şu anda hesabınıza tanımlı.'
+                    : 'Mevcut planınızdan daha düşük bir pakete bu ekrandan geçiş yapılamaz.'}
+                </Text>
+              )}
             </GlassCard>
           );
         })}
 
-        {/* Info */}
-        <GlassCard style={{ marginTop: 16 }}>
+        <GlassCard style={styles.infoCard}>
           <Text style={[styles.infoTitle, { color: colors.text }]}>💡 Bilgi</Text>
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            Tüm paketler otomatik olarak yenilenir. İstediğiniz zaman iptal edebilirsiniz.
-            Ücretsiz paketten premium pakete geçiş anında etkinleşir.
-          </Text>
-          <Text style={[styles.infoContact, { color: colors.textMuted }]}>
-            Sorularınız için: destek@masalkutusu.com
-          </Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Tüm paketler mevcut backend satın alma akışıyla hemen etkinleşir. Ücretsiz plandan ücretli plana geçiş anında uygulanır.</Text>
+          <Text style={[styles.infoContact, { color: colors.textMuted }]}>Sorularınız için: destek@masalkutusu.com</Text>
         </GlassCard>
       </ScrollView>
     </GradientBackground>
@@ -221,9 +323,26 @@ const styles = StyleSheet.create({
   backBtn: { marginBottom: 16 },
   backText: { fontSize: 15, fontWeight: '600' },
 
-  header: { alignItems: 'center', marginBottom: 24 },
+  header: { alignItems: 'center', marginBottom: 20 },
   headerTitle: { fontSize: 30, fontWeight: '700', color: Colors.primary[500], marginBottom: 8 },
-  headerSub: { fontSize: 15, textAlign: 'center' },
+  headerSub: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
+
+  summaryCard: { marginBottom: 16, gap: 12 },
+  summaryLoadingState: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  summaryHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  summaryTitle: { fontSize: 20, fontWeight: '700' },
+  summaryText: { fontSize: 14, lineHeight: 21 },
+  summaryHelper: { fontSize: 12, lineHeight: 18 },
+  summaryBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full, alignSelf: 'flex-start' },
+  summaryBadgeText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
+  loginPromptButton: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  loginPromptButtonText: { fontSize: 14, fontWeight: '600' },
 
   errorBox: {
     backgroundColor: 'rgba(239,68,68,0.1)',
@@ -237,7 +356,7 @@ const styles = StyleSheet.create({
 
   pricingCard: {
     marginBottom: 16,
-    alignItems: 'center',
+    gap: 14,
   },
   popularCard: {
     borderColor: Colors.primary[500],
@@ -251,21 +370,31 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
   },
   popularBadgeText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
-
-  planName: { fontSize: 22, fontWeight: '700', marginTop: 8, marginBottom: 8 },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: 4 },
+  planHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  planName: { fontSize: 22, fontWeight: '700', marginTop: 8, marginBottom: 4 },
+  planCaption: { fontSize: 13, lineHeight: 20, maxWidth: 240 },
+  currentBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  currentBadgeText: { color: Colors.success, fontSize: 11, fontWeight: '700' },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   priceAmount: { fontSize: 36, fontWeight: '700', color: Colors.primary[500] },
   priceUnit: { fontSize: 14 },
-  freeLabel: { fontSize: 12, marginBottom: 8 },
+  freeLabel: { fontSize: 12 },
 
-  creditsRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 20 },
+  creditsRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   creditsAmount: { fontSize: 28, fontWeight: '700', color: Colors.primary[500] },
   creditsPeriod: { fontSize: 14 },
 
-  featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8, alignSelf: 'flex-start' },
+  featuresList: { gap: 8 },
+  featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   featureCheck: { fontSize: 14, marginTop: 1 },
-  featureText: { fontSize: 14, flex: 1 },
+  featureText: { fontSize: 14, flex: 1, lineHeight: 20 },
 
+  purchaseContainer: { marginTop: 4 },
   purchaseBtn: {
     paddingVertical: 14,
     borderRadius: BorderRadius.md,
@@ -286,9 +415,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
-  purchaseBtnSecondaryText: { fontSize: 16, fontWeight: '600' },
+  purchaseBtnSecondaryText: { fontSize: 15, fontWeight: '600' },
   disabledBtn: { opacity: 0.5 },
+  planFootnote: { fontSize: 12, lineHeight: 18 },
 
+  infoCard: { marginTop: 4 },
   infoTitle: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
   infoText: { fontSize: 14, lineHeight: 22, marginBottom: 12 },
   infoContact: { fontSize: 13 },
