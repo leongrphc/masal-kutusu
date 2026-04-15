@@ -15,7 +15,7 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [x] Audio player deneyimini güçlendir.
 - [x] Dashboard deneyimini iyileştir.
 - [x] Pricing deneyimini iyileştir.
-- [ ] Form, loading ve hata durumlarını standardize et.
+- [x] Form, loading ve hata durumlarını standardize et.
 - [ ] Test ve release hazırlığını güçlendir.
 
 ## Backlog

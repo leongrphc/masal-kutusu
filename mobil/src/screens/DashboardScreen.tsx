@@ -95,9 +95,12 @@ export default function DashboardScreen() {
 
   if (authLoading || loading) {
     return (
-      <GradientBackground style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={Colors.primary[500]} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Yükleniyor...</Text>
+      <GradientBackground style={styles.loadingContainer}>
+        <GlassCard style={styles.loadingCard}>
+          <ActivityIndicator size="large" color={Colors.primary[500]} />
+          <Text style={[styles.loadingTitle, { color: colors.text }]}>Kontrol paneli hazırlanıyor</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Abonelik ve işlem bilgilerinizi güncelliyoruz.</Text>
+        </GlassCard>
       </GradientBackground>
     );
   }
@@ -351,7 +354,21 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 50, paddingBottom: 40 },
-  loadingText: { marginTop: 12, fontSize: 14 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingCard: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  loadingText: { marginTop: 0, fontSize: 14, textAlign: 'center' },
 
   header: { marginBottom: 16 },
   overviewCard: { marginBottom: 16, gap: 16 },

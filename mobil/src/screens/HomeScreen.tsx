@@ -161,6 +161,7 @@ export default function HomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Nav Bar */}
         <View style={styles.navBar}>
@@ -381,7 +382,7 @@ export default function HomeScreen() {
           {/* Error */}
           {error && (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>❌ {error}</Text>
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
         </GlassCard>

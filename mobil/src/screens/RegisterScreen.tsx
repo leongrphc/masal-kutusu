@@ -22,6 +22,14 @@ export default function RegisterScreen() {
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async () => {
+    const trimmedFullName = fullName.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedFullName || !trimmedEmail || !password || !confirmPassword) {
+      setError('Lütfen tüm alanları doldurun.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -37,7 +45,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUp(trimmedEmail, password, trimmedFullName);
 
     if (error) {
       setError(error.message || 'Kayıt başarısız');
@@ -134,6 +142,7 @@ export default function RegisterScreen() {
             onChangeText={setFullName}
             placeholder="Ahmet Yılmaz"
             placeholderTextColor={Colors.neutral[400]}
+            returnKeyType="next"
             style={[styles.input, {
               backgroundColor: colors.inputBackground,
               borderColor: colors.inputBorder,
@@ -150,6 +159,7 @@ export default function RegisterScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            returnKeyType="next"
             style={[styles.input, {
               backgroundColor: colors.inputBackground,
               borderColor: colors.inputBorder,
@@ -164,6 +174,7 @@ export default function RegisterScreen() {
             placeholder="••••••••"
             placeholderTextColor={Colors.neutral[400]}
             secureTextEntry
+            returnKeyType="next"
             style={[styles.input, {
               backgroundColor: colors.inputBackground,
               borderColor: colors.inputBorder,
@@ -179,6 +190,8 @@ export default function RegisterScreen() {
             placeholder="••••••••"
             placeholderTextColor={Colors.neutral[400]}
             secureTextEntry
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
             style={[styles.input, {
               backgroundColor: colors.inputBackground,
               borderColor: colors.inputBorder,
@@ -194,6 +207,8 @@ export default function RegisterScreen() {
             fullWidth
             style={{ marginTop: 24 }}
           />
+
+          <Text style={[styles.helperText, { color: colors.textMuted }]}>Kayıt sonrası e-posta onayı ile hesabınızı aktifleştirip giriş yapabilirsiniz.</Text>
 
           <View style={styles.linkRow}>
             <Text style={[styles.linkText, { color: colors.textSecondary }]}>
@@ -228,10 +243,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   backBtn: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 10,
+    marginBottom: 24,
+    alignSelf: 'flex-start',
   },
   backText: { fontSize: 15, fontWeight: '600' },
   headerContainer: {
@@ -268,6 +281,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   hint: { fontSize: 11, marginTop: 4 },
+  helperText: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 16,
+  },
   linkRow: {
     flexDirection: 'row',
     justifyContent: 'center',

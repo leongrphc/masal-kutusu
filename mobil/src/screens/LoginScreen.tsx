@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -19,10 +19,17 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail || !password) {
+      setError('Lütfen e-posta ve şifrenizi girin.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(trimmedEmail, password);
 
     if (error) {
       setError(error.message || 'Giriş başarısız');
@@ -34,7 +41,11 @@ export default function LoginScreen() {
 
   return (
     <GradientBackground>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: colors.textSecondary }]}>← Geri</Text>
         </TouchableOpacity>
@@ -65,6 +76,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            returnKeyType="next"
             style={[styles.input, {
               backgroundColor: colors.inputBackground,
               borderColor: colors.inputBorder,
@@ -79,6 +91,8 @@ export default function LoginScreen() {
             placeholder="••••••••"
             placeholderTextColor={Colors.neutral[400]}
             secureTextEntry
+            returnKeyType="done"
+            onSubmitEditing={handleSubmit}
             style={[styles.input, {
               backgroundColor: colors.inputBackground,
               borderColor: colors.inputBorder,
@@ -95,6 +109,8 @@ export default function LoginScreen() {
             style={{ marginTop: 24 }}
           />
 
+          <Text style={[styles.helperText, { color: colors.textMuted }]}>Giriş yaptıktan sonra masal üretme, geçmiş ve paket ekranlarına doğrudan erişirsiniz.</Text>
+
           <View style={styles.linkRow}>
             <Text style={[styles.linkText, { color: colors.textSecondary }]}>
               Hesabınız yok mu?{' '}
@@ -104,22 +120,21 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
         </GlassCard>
-      </View>
+      </ScrollView>
     </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 60,
   },
   backBtn: {
-    position: 'absolute',
-    top: 50,
-    left: 24,
-    zIndex: 10,
+    marginBottom: 24,
+    alignSelf: 'flex-start',
   },
   backText: { fontSize: 15, fontWeight: '600' },
   headerContainer: {
@@ -160,6 +175,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     fontSize: 15,
+  },
+  helperText: {
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 16,
   },
   linkRow: {
     flexDirection: 'row',
