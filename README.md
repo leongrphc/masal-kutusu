@@ -35,7 +35,7 @@ Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyi
 ### 2. Projeyi Kopyalayın
 
 ```bash
-git clone https://github.com/kullaniciadi/masal-kutusu.git
+git clone https://github.com/leongrphc/masal-kutusu.git
 cd masal-kutusu
 ```
 
