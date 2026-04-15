@@ -9,6 +9,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import PricingScreen from '../screens/PricingScreen';
+import StoryHistoryScreen from '../screens/StoryHistoryScreen';
 import { GradientBackground } from '../components/GradientBackground';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -24,6 +25,7 @@ export type RootStackParamList = {
 
 type AppTabParamList = {
   CreateStory: undefined;
+  History: undefined;
   Dashboard: undefined;
 };
 
@@ -70,6 +72,15 @@ function AuthenticatedTabs() {
           title: 'Masal Oluştur',
           tabBarLabel: 'Masal',
           tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>✨</Text>,
+        }}
+      />
+      <Tab.Screen
+        name="History"
+        component={StoryHistoryScreen}
+        options={{
+          title: 'Geçmiş',
+          tabBarLabel: 'Geçmiş',
+          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>🕘</Text>,
         }}
       />
       <Tab.Screen

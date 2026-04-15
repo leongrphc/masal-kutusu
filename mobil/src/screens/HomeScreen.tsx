@@ -15,6 +15,7 @@ import { Button } from '../components/Button';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { Colors, BorderRadius } from '../constants/theme';
 import { API_BASE_URL, EXAMPLE_TOPICS } from '../constants/config';
+import { saveStoryToHistory } from '../lib/storyHistory';
 
 interface StoryResult {
   story: string;
@@ -114,6 +115,15 @@ export default function HomeScreen() {
       }
 
       setResult(data);
+      void saveStoryToHistory(user.id, {
+        topic: topic.trim(),
+        story: data.story,
+        ageRange,
+        length,
+        theme,
+      }).catch((historyError) => {
+        console.error('Story history save error:', historyError);
+      });
 
       // Abonelik bilgisini güncelle
       const subResponse = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {

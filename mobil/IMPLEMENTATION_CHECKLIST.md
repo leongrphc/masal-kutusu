@@ -11,7 +11,7 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [x] Mobile README içeriğini mevcut mimariye göre düzelt.
 - [x] Auth ve navigation akışını toparla.
 - [x] Auth sonrası daha net mobil app shell kur.
-- [ ] Masal geçmişi / kayıtlı içerik akışını ekle.
+- [x] Masal geçmişi / kayıtlı içerik akışını ekle.
 - [ ] Audio player deneyimini güçlendir.
 - [ ] Dashboard deneyimini iyileştir.
 - [ ] Pricing deneyimini iyileştir.
