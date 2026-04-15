@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { Audio } from 'expo-av';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  ActivityIndicator,
+} from 'react-native';
+import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Colors, BorderRadius } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlassCard } from './GlassCard';
@@ -11,6 +18,9 @@ interface AudioPlayerProps {
   mimeType: string;
 }
 
+const SPEED_OPTIONS = [0.9, 1.0, 1.1] as const;
+const SEEK_SECONDS = 10;
+
 function base64ToUint8Array(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
@@ -20,23 +30,99 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
+function getAudioExtension(mimeType: string) {
+  if (mimeType.includes('mpeg')) {
+    return 'mp3';
+  }
+
+  if (mimeType.includes('wav')) {
+    return 'wav';
+  }
+
+  return 'audio';
+}
+
 export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
   const { colors } = useTheme();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const pulseAnims = useRef(Array.from({ length: 20 }, () => new Animated.Value(0.2))).current;
+  const [isReady, setIsReady] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(true);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.0);
-  const pulseAnims = useRef(Array.from({ length: 20 }, () => new Animated.Value(0.2))).current;
 
   useEffect(() => {
-    loadAudio();
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
+    let isMounted = true;
+
+    const prepareAudio = async () => {
+      setIsPreparing(true);
+      setAudioError(null);
+      setIsReady(false);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+
+      try {
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+        });
+
+        const audioFile = new File(Paths.cache, `masal_audio.${getAudioExtension(mimeType)}`);
+        audioFile.write(base64ToUint8Array(audioBase64));
+
+        const { sound: newSound, status } = await Audio.Sound.createAsync(
+          { uri: audioFile.uri },
+          {
+            shouldPlay: false,
+            progressUpdateIntervalMillis: 250,
+          },
+          onPlaybackStatusUpdate,
+        );
+
+        if (!isMounted) {
+          await newSound.unloadAsync();
+          return;
+        }
+
+        soundRef.current = newSound;
+        setIsReady(true);
+
+        if (status.isLoaded) {
+          setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
+        }
+      } catch (error) {
+        console.error('Audio yükleme hatası:', error);
+        if (isMounted) {
+          setAudioError('Ses oynatıcı hazırlanamadı.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsPreparing(false);
+        }
       }
     };
-  }, [audioBase64]);
+
+    void prepareAudio();
+
+    return () => {
+      isMounted = false;
+      const currentSound = soundRef.current;
+      soundRef.current = null;
+      if (currentSound) {
+        void currentSound.unloadAsync();
+      }
+    };
+  }, [audioBase64, mimeType]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -47,7 +133,7 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
   }, [isPlaying]);
 
   const startWaveAnimation = () => {
-    const animations = pulseAnims.map((anim, i) =>
+    const animations = pulseAnims.map((anim) =>
       Animated.loop(
         Animated.sequence([
           Animated.timing(anim, {
@@ -60,9 +146,10 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
             duration: 400 + Math.random() * 400,
             useNativeDriver: false,
           }),
-        ])
-      )
+        ]),
+      ),
     );
+
     Animated.parallel(animations).start();
   };
 
@@ -77,86 +164,106 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
     });
   };
 
-  const loadAudio = async () => {
-    try {
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-      });
-
-      const audioFile = new File(Paths.cache, 'masal_audio.wav');
-      const bytes = base64ToUint8Array(audioBase64);
-      audioFile.write(bytes);
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: audioFile.uri },
-        { shouldPlay: false },
-        onPlaybackStatusUpdate
-      );
-
-      setSound(newSound);
-    } catch (error) {
-      console.error('Audio yükleme hatası:', error);
+  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) {
+      return;
     }
-  };
 
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      setCurrentTime(status.positionMillis / 1000);
-      setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-      }
+    setCurrentTime(status.positionMillis / 1000);
+    setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
+    setIsPlaying(status.isPlaying);
+
+    if (status.didJustFinish) {
+      setIsPlaying(false);
     }
   };
 
   const togglePlay = async () => {
-    if (!sound) return;
+    const sound = soundRef.current;
+    if (!sound || !isReady || isPreparing || audioError) {
+      return;
+    }
 
     if (isPlaying) {
       await sound.pauseAsync();
-    } else {
-      await sound.playAsync();
+      return;
     }
-    setIsPlaying(!isPlaying);
+
+    if (duration > 0 && currentTime >= duration - 0.25) {
+      await sound.setPositionAsync(0);
+    }
+
+    await sound.playAsync();
+  };
+
+  const seekBy = async (seconds: number) => {
+    const sound = soundRef.current;
+    if (!sound || !isReady || duration <= 0) {
+      return;
+    }
+
+    const nextTime = Math.max(0, Math.min(currentTime + seconds, duration));
+    await sound.setPositionAsync(nextTime * 1000);
+    setCurrentTime(nextTime);
+  };
+
+  const restartAudio = async () => {
+    const sound = soundRef.current;
+    if (!sound || !isReady) {
+      return;
+    }
+
+    await sound.setPositionAsync(0);
+    setCurrentTime(0);
   };
 
   const changePlaybackRate = async (rate: number) => {
-    if (!sound) return;
+    const sound = soundRef.current;
+    if (!sound || !isReady) {
+      return;
+    }
+
     await sound.setRateAsync(rate, true);
     setPlaybackRate(rate);
   };
 
   const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00';
+    if (Number.isNaN(time)) {
+      return '0:00';
+    }
+
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const controlsDisabled = !isReady || isPreparing || !!audioError;
 
   return (
     <GlassCard style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.liveDot} />
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Ses Kaydı</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>Sesli Anlatım</Text>
         </View>
         <Text style={[styles.time, { color: colors.textMuted }]}>
           {formatTime(currentTime)} / {formatTime(duration)}
         </Text>
       </View>
 
-      {/* Play Button */}
       <View style={styles.playContainer}>
-        <TouchableOpacity onPress={togglePlay} activeOpacity={0.8} style={styles.playButton}>
-          {isPlaying ? (
+        <TouchableOpacity
+          onPress={() => {
+            void togglePlay();
+          }}
+          activeOpacity={0.8}
+          disabled={controlsDisabled}
+          style={[styles.playButton, controlsDisabled && styles.playButtonDisabled]}
+        >
+          {isPreparing ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : isPlaying ? (
             <View style={styles.pauseIcon}>
               <View style={styles.pauseBar} />
               <View style={styles.pauseBar} />
@@ -167,23 +274,77 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
         </TouchableOpacity>
       </View>
 
-      {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={[styles.progressTrack, { backgroundColor: colors.inputBorder }]}>
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
       </View>
 
-      {/* Speed Controls */}
+      {audioError ? (
+        <Text style={[styles.statusText, styles.errorText]}>{audioError}</Text>
+      ) : isPreparing ? (
+        <Text style={[styles.statusText, { color: colors.textMuted }]}>Ses hazırlanıyor...</Text>
+      ) : (
+        <Text style={[styles.statusText, { color: colors.textMuted }]}>10 sn ileri/geri sarabilir veya başa dönebilirsiniz.</Text>
+      )}
+
+      <View style={styles.seekControls}>
+        <TouchableOpacity
+          onPress={() => {
+            void seekBy(-SEEK_SECONDS);
+          }}
+          disabled={controlsDisabled}
+          style={[
+            styles.seekButton,
+            { backgroundColor: colors.surface, borderColor: colors.inputBorder },
+            controlsDisabled && styles.seekButtonDisabled,
+          ]}
+        >
+          <Text style={[styles.seekButtonText, { color: colors.text }]}>-10 sn</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            void restartAudio();
+          }}
+          disabled={controlsDisabled}
+          style={[
+            styles.seekButton,
+            { backgroundColor: colors.surface, borderColor: colors.inputBorder },
+            controlsDisabled && styles.seekButtonDisabled,
+          ]}
+        >
+          <Text style={[styles.seekButtonText, { color: colors.text }]}>Başa Dön</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            void seekBy(SEEK_SECONDS);
+          }}
+          disabled={controlsDisabled}
+          style={[
+            styles.seekButton,
+            { backgroundColor: colors.surface, borderColor: colors.inputBorder },
+            controlsDisabled && styles.seekButtonDisabled,
+          ]}
+        >
+          <Text style={[styles.seekButtonText, { color: colors.text }]}>+10 sn</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.speedContainer}>
         <Text style={[styles.speedLabel, { color: colors.textMuted }]}>Hız:</Text>
-        {[0.9, 1.0, 1.1].map((rate) => (
+        {SPEED_OPTIONS.map((rate) => (
           <TouchableOpacity
             key={rate}
-            onPress={() => changePlaybackRate(rate)}
+            onPress={() => {
+              void changePlaybackRate(rate);
+            }}
+            disabled={controlsDisabled}
             style={[
               styles.speedButton,
               playbackRate === rate && styles.speedButtonActive,
+              controlsDisabled && styles.speedButtonDisabled,
             ]}
           >
             <Text
@@ -198,7 +359,6 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
         ))}
       </View>
 
-      {/* Waveform */}
       <View style={styles.waveContainer}>
         {pulseAnims.map((anim, i) => (
           <Animated.View
@@ -264,6 +424,9 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
+  playButtonDisabled: {
+    opacity: 0.65,
+  },
   pauseIcon: {
     flexDirection: 'row',
     gap: 6,
@@ -298,6 +461,32 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary[500],
     borderRadius: 3,
   },
+  statusText: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: Colors.error,
+    fontWeight: '600',
+  },
+  seekControls: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  seekButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  seekButtonDisabled: {
+    opacity: 0.5,
+  },
+  seekButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   speedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -316,6 +505,9 @@ const styles = StyleSheet.create({
   },
   speedButtonActive: {
     backgroundColor: Colors.primary[500],
+  },
+  speedButtonDisabled: {
+    opacity: 0.5,
   },
   speedButtonText: {
     fontSize: 13,

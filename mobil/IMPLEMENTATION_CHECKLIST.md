@@ -12,7 +12,7 @@ Bu dosya ilerlemeyi takip etmek için kullanılır. Her anlamlı adım tamamland
 - [x] Auth ve navigation akışını toparla.
 - [x] Auth sonrası daha net mobil app shell kur.
 - [x] Masal geçmişi / kayıtlı içerik akışını ekle.
-- [ ] Audio player deneyimini güçlendir.
+- [x] Audio player deneyimini güçlendir.
 - [ ] Dashboard deneyimini iyileştir.
 - [ ] Pricing deneyimini iyileştir.
 - [ ] Form, loading ve hata durumlarını standardize et.
