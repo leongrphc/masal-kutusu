@@ -1,4 +1,11 @@
-function requireEnv(name: 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE_ANON_KEY' | 'EXPO_PUBLIC_API_BASE_URL') {
+type RequiredEnvName =
+  | 'EXPO_PUBLIC_SUPABASE_URL'
+  | 'EXPO_PUBLIC_SUPABASE_ANON_KEY'
+  | 'EXPO_PUBLIC_API_BASE_URL';
+
+type OptionalEnvName = 'EXPO_PUBLIC_SENTRY_DSN';
+
+function requireEnv(name: RequiredEnvName) {
   const value = process.env[name];
 
   if (!value) {
@@ -8,9 +15,14 @@ function requireEnv(name: 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE_ANO
   return value;
 }
 
+function getOptionalEnv(name: OptionalEnvName) {
+  return process.env[name];
+}
+
 export const SUPABASE_URL = requireEnv('EXPO_PUBLIC_SUPABASE_URL');
 export const SUPABASE_ANON_KEY = requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
 export const API_BASE_URL = requireEnv('EXPO_PUBLIC_API_BASE_URL');
+export const SENTRY_DSN = getOptionalEnv('EXPO_PUBLIC_SENTRY_DSN');
 
 export const SUBSCRIPTION_PLANS = {
   free: {

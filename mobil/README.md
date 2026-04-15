@@ -59,6 +59,7 @@ npm run check
 - `typecheck`: TypeScript tip kontrolünü çalıştırır.
 - `doctor`: Expo yapılandırmasını ve bağımlılık uyumunu kontrol eder.
 - `check`: release öncesi hızlı doğrulama için typecheck + doctor adımlarını birlikte çalıştırır.
+- Sentry entegrasyonu eklendiği için Metro yapılandırması `metro.config.js` üzerinden yönetilir.
 
 ## Release Akışı
 
@@ -74,6 +75,8 @@ Notlar:
 - Android production submit için `mobil/google-service-account.json` dosyasını yerel olarak ekleyin. Bu dosya git'e dahil edilmez.
 - EAS build çalıştırmadan önce Expo hesabında oturum açmış olmanız gerekir.
 - iOS production dağıtımı için Apple tarafı kimlik bilgilerini EAS üzerinde tamamlamanız gerekir.
+- Sentry source map upload için `SENTRY_AUTH_TOKEN` ortam değişkenini build ortamında tanımlayın.
+- Uygulama içi hata takibi için `EXPO_PUBLIC_SENTRY_DSN` değerini sağlayın; boş bırakılırsa Sentry kapalı çalışır.
 
 ## Proje Yapısı
 
