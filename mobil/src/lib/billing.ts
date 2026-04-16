@@ -53,6 +53,7 @@ interface BackendBillingReadiness {
 
 const BACKEND_RECEIPT_VALIDATION_READY =
   process.env.EXPO_PUBLIC_BILLING_BACKEND_READY === 'true';
+const DEBUG_FAKE_BILLING_ENABLED = process.env.EXPO_PUBLIC_DEBUG_FAKE_BILLING === 'true';
 const BILLING_READINESS_CACHE_TTL_MS = 60_000;
 
 let connectionPromise: Promise<void> | null = null;
@@ -185,6 +186,10 @@ async function fetchBackendBillingReadiness(forceRefresh = false) {
 }
 
 async function isBillingReady() {
+  if (DEBUG_FAKE_BILLING_ENABLED) {
+    return true;
+  }
+
   const readiness = await fetchBackendBillingReadiness();
   return isBackendReadyForCurrentPlatform(readiness);
 }
@@ -246,6 +251,31 @@ function getPurchaseToken(purchase: Purchase) {
   return purchase.purchaseToken ?? null;
 }
 
+async function triggerDebugFakePurchase(planId: PaidSubscriptionPlanId) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/subscription/purchase`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ planId }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Debug satın alma başarısız oldu.');
+  }
+}
+
 async function validateReceiptWithBackend(planId: PaidSubscriptionPlanId, purchase: Purchase) {
   const {
     finishTransaction,
@@ -304,6 +334,16 @@ async function validateReceiptWithBackend(planId: PaidSubscriptionPlanId, purcha
 export async function getBillingAvailability(
   planId: PaidSubscriptionPlanId,
 ): Promise<BillingPlanAvailability> {
+  if (DEBUG_FAKE_BILLING_ENABLED) {
+    return {
+      planId,
+      sku: getPlanSku(planId),
+      product: null,
+      canPurchase: true,
+      message: 'Debug fake billing açık.',
+    };
+  }
+
   if (!isNativeStorePlatform()) {
     return createBlockedAvailability(
       planId,
@@ -464,6 +504,24 @@ export async function restoreBillingPurchases(): Promise<BillingPurchaseResult> 
 export async function startPlanPurchase(
   planId: PaidSubscriptionPlanId,
 ): Promise<BillingPurchaseResult> {
+  if (DEBUG_FAKE_BILLING_ENABLED) {
+    try {
+      await triggerDebugFakePurchase(planId);
+
+      return {
+        status: 'started',
+        message: 'Debug satın alma tamamlandı ve üyeliğiniz güncellendi.',
+      };
+    } catch (error) {
+      const purchaseError = error as { message?: string };
+
+      return {
+        status: 'error',
+        message: purchaseError.message ?? 'Debug satın alma başlatılamadı.',
+      };
+    }
+  }
+
   const availability = await getBillingAvailability(planId);
 
   if (!availability.canPurchase || !availability.sku) {

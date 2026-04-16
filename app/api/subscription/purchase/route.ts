@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { purchaseSubscription, type SubscriptionPlanId } from '@/lib/subscription';
 
+const DEBUG_FAKE_BILLING_ENABLED = process.env.ENABLE_DEBUG_FAKE_BILLING === 'true';
+
 export async function POST(request: NextRequest) {
   try {
+    if (!DEBUG_FAKE_BILLING_ENABLED) {
+      return NextResponse.json(
+        { error: 'Debug fake billing kapalı.' },
+        { status: 403, headers: { 'Content-Type': 'application/json; charset=utf-8' } }
+      );
+    }
+
     // Get user session
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
