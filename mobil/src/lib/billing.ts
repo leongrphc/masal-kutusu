@@ -60,6 +60,37 @@ function getPlanSku(planId: PaidSubscriptionPlanId) {
   return undefined;
 }
 
+function getPlanIdForProductId(productId: string): PaidSubscriptionPlanId | null {
+  for (const planId of PAID_SUBSCRIPTION_PLAN_IDS) {
+    const skuConfig = SUBSCRIPTION_BILLING_SKUS[planId];
+    if (skuConfig.ios === productId || skuConfig.android === productId) {
+      return planId;
+    }
+  }
+
+  return null;
+}
+
+function pickLatestPurchase(purchases: Purchase[]) {
+  return purchases.reduce<Purchase | null>((latest, purchase) => {
+    if (!latest) {
+      return purchase;
+    }
+
+    return purchase.transactionDate > latest.transactionDate ? purchase : latest;
+  }, null);
+}
+
+function getRestoreMessage(restoredCount: number) {
+  return restoredCount === 1
+    ? 'Store satın alımınız yeniden eşitlendi ve üyeliğiniz güncellendi.'
+    : 'Store satın alımlarınız yeniden eşitlendi ve en güncel üyeliğiniz uygulandı.';
+}
+
+function isBillingReady() {
+  return BACKEND_RECEIPT_VALIDATION_READY;
+}
+
 function createBlockedAvailability(
   planId: PaidSubscriptionPlanId,
   blockReason: BillingBlockReason,
@@ -247,6 +278,77 @@ export async function getAllBillingAvailability(): Promise<BillingAvailabilityMa
   );
 
   return Object.fromEntries(entries) as BillingAvailabilityMap;
+}
+
+export async function restoreBillingPurchases(): Promise<BillingPurchaseResult> {
+  if (!isBillingReady()) {
+    return {
+      status: 'blocked',
+      message: 'Restore işlemi backend doğrulama tamamlandığında açılacak.',
+    };
+  }
+
+  if (!isNativeStorePlatform()) {
+    return {
+      status: 'blocked',
+      message: 'Restore yalnızca native iOS ve Android buildlerinde çalışır.',
+    };
+  }
+
+  try {
+    await ensureBillingConnection();
+    const { getAvailablePurchases } = await loadExpoIap();
+    const purchases = await getAvailablePurchases({
+      alsoPublishToEventListenerIOS: false,
+      onlyIncludeActiveItemsIOS: true,
+    });
+
+    const matchedPurchases = purchases
+      .map((purchase) => ({
+        purchase,
+        planId: getPlanIdForProductId(purchase.productId),
+      }))
+      .filter((entry): entry is { purchase: Purchase; planId: PaidSubscriptionPlanId } => Boolean(entry.planId));
+
+    if (!matchedPurchases.length) {
+      return {
+        status: 'blocked',
+        message: 'Bu hesap için geri yüklenecek aktif store satın alımı bulunamadı.',
+      };
+    }
+
+    const latestPurchase = pickLatestPurchase(matchedPurchases.map((entry) => entry.purchase));
+
+    if (!latestPurchase) {
+      return {
+        status: 'blocked',
+        message: 'Geri yüklenecek geçerli bir satın alma bulunamadı.',
+      };
+    }
+
+    const latestPlanId = getPlanIdForProductId(latestPurchase.productId);
+
+    if (!latestPlanId) {
+      return {
+        status: 'blocked',
+        message: 'Store satın alımı tanımlı bir pakete eşlenemedi.',
+      };
+    }
+
+    await validateReceiptWithBackend(latestPlanId, latestPurchase);
+
+    return {
+      status: 'started',
+      message: getRestoreMessage(matchedPurchases.length),
+    };
+  } catch (error) {
+    const restoreError = error as { message?: string };
+
+    return {
+      status: 'error',
+      message: restoreError.message ?? 'Satın alımlar geri yüklenemedi.',
+    };
+  }
 }
 
 export async function startPlanPurchase(

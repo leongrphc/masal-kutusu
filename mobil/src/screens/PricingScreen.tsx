@@ -23,6 +23,7 @@ import {
 } from '../constants/config';
 import {
   getAllBillingAvailability,
+  restoreBillingPurchases,
   startPlanPurchase,
   type BillingPlanAvailability,
 } from '../lib/billing';
@@ -107,6 +108,16 @@ export default function PricingScreen() {
     }, [fetchBillingAvailability, fetchSubscription]),
   );
 
+  const refreshScreenData = useCallback(async () => {
+    const [nextSubscription, nextAvailability] = await Promise.all([
+      fetchSubscription(),
+      fetchBillingAvailability(),
+    ]);
+
+    setSubscription(nextSubscription);
+    setBillingAvailability(nextAvailability);
+  }, [fetchBillingAvailability, fetchSubscription]);
+
   const handlePurchase = async (planId: SubscriptionPlanId) => {
     if (!user || !session) {
       navigation.navigate('Login');
@@ -127,17 +138,33 @@ export default function PricingScreen() {
         message: result.message,
       });
 
-      const [nextSubscription, nextAvailability] = await Promise.all([
-        fetchSubscription(),
-        fetchBillingAvailability(),
-      ]);
-
-      setSubscription(nextSubscription);
-      setBillingAvailability(nextAvailability);
+      await refreshScreenData();
 
       if (result.status === 'started') {
         navigation.goBack();
       }
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    if (!user || !session) {
+      navigation.navigate('Login');
+      return;
+    }
+
+    setLoading('restore');
+    setFeedback(null);
+
+    try {
+      const result = await restoreBillingPurchases();
+      setFeedback({
+        type: result.status === 'started' || result.status === 'cancelled' ? 'info' : 'error',
+        message: result.message,
+      });
+
+      await refreshScreenData();
     } finally {
       setLoading(null);
     }
@@ -215,6 +242,20 @@ export default function PricingScreen() {
                 </View>
               </View>
               <Text style={[styles.summaryHelper, { color: colors.textMuted }]}>Yükseltme store satın alma akışıyla ilerleyecek. Daha düşük pakete geçiş bu ekranda kapalıdır.</Text>
+              <TouchableOpacity
+                onPress={handleRestorePurchases}
+                disabled={loading === 'restore'}
+                style={[
+                  styles.restoreButton,
+                  { borderColor: colors.inputBorder, backgroundColor: colors.surface },
+                ]}
+              >
+                {loading === 'restore' ? (
+                  <ActivityIndicator size="small" color={Colors.primary[500]} />
+                ) : (
+                  <Text style={[styles.restoreButtonText, { color: colors.text }]}>Satın Alımları Geri Yükle</Text>
+                )}
+              </TouchableOpacity>
             </>
           ) : (
             <>
@@ -401,6 +442,16 @@ const styles = StyleSheet.create({
   summaryTitle: { fontSize: 20, fontWeight: '700' },
   summaryText: { fontSize: 14, lineHeight: 21 },
   summaryHelper: { fontSize: 12, lineHeight: 18 },
+  restoreButton: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  restoreButtonText: { fontSize: 14, fontWeight: '600' },
   summaryBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full, alignSelf: 'flex-start' },
   summaryBadgeText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
   loginPromptButton: {
