@@ -118,6 +118,8 @@ export default function HomeScreen() {
       void saveStoryToHistory(user.id, {
         topic: topic.trim(),
         story: data.story,
+        audioBase64: data.audioBase64,
+        mimeType: data.mimeType,
         ageRange,
         length,
         theme,

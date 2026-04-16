@@ -8,6 +8,8 @@ export interface StoryHistoryEntry {
   id: string;
   topic: string;
   story: string;
+  audioBase64?: string;
+  mimeType?: string;
   ageRange: StoryAgeRange;
   length: StoryLength;
   theme: StoryTheme;
@@ -18,6 +20,8 @@ export interface StoryHistoryEntry {
 interface SaveStoryHistoryInput {
   topic: string;
   story: string;
+  audioBase64?: string;
+  mimeType?: string;
   ageRange: StoryAgeRange;
   length: StoryLength;
   theme: StoryTheme;
@@ -50,6 +54,8 @@ export async function saveStoryToHistory(userId: string, entry: SaveStoryHistory
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     topic: entry.topic,
     story: entry.story,
+    audioBase64: entry.audioBase64,
+    mimeType: entry.mimeType,
     ageRange: entry.ageRange,
     length: entry.length,
     theme: entry.theme,

@@ -13,6 +13,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { GradientBackground } from '../components/GradientBackground';
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
+import { AudioPlayer } from '../components/AudioPlayer';
 import { BorderRadius, Colors } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -135,6 +136,10 @@ export default function StoryHistoryScreen() {
                   <Text style={[styles.storyPreview, { color: colors.textSecondary }]} numberOfLines={isExpanded ? undefined : 4}>
                     {story.story}
                   </Text>
+
+                  {story.audioBase64 && story.mimeType ? (
+                    <AudioPlayer audioBase64={story.audioBase64} mimeType={story.mimeType} />
+                  ) : null}
 
                   <View style={styles.actionRow}>
                     <TouchableOpacity
