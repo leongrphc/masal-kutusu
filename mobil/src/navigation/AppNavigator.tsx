@@ -106,7 +106,7 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Home"
+        initialRouteName={user ? 'AppTabs' : 'Home'}
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',

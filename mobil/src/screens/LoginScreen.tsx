@@ -35,7 +35,7 @@ export default function LoginScreen() {
       setError(error.message || 'Giriş başarısız');
       setLoading(false);
     } else {
-      navigation.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
     }
   };
 

@@ -179,7 +179,7 @@ export default function HomeScreen() {
               <>
                 {!loadingSubscription && subscription && (
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('Dashboard')}
+                    onPress={() => navigation.navigate('AppTabs', { screen: 'Dashboard' })}
                     style={[styles.creditBadge, { backgroundColor: colors.surface }]}
                   >
                     <Text style={styles.creditIcon}>💰</Text>
@@ -188,7 +188,7 @@ export default function HomeScreen() {
                     </Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
+                <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Dashboard' })}>
                   <LinearGradient
                     colors={[Colors.primary[500], Colors.warm[500]]}
                     start={{ x: 0, y: 0 }}
