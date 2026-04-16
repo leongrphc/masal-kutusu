@@ -6,8 +6,6 @@ const supabaseServiceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Server-side Supabase client
-// Uses service role key if available (bypasses RLS), otherwise uses anon key
 export const supabaseAdmin = createClient<Database>(
   supabaseUrl,
   supabaseServiceKey,
@@ -22,7 +20,6 @@ export const supabaseAdmin = createClient<Database>(
   },
 );
 
-// Subscription plans configuration
 export const SUBSCRIPTION_PLANS = {
   free: {
     id: "free",
@@ -89,7 +86,17 @@ export const SUBSCRIPTION_PLANS = {
 
 export type SubscriptionPlanId = keyof typeof SUBSCRIPTION_PLANS;
 
-// Plan hierarchy (lower number = lower tier)
+export interface StorePurchaseMetadata {
+  platform: "ios" | "android";
+  productId: string;
+  transactionId: string;
+  purchaseToken: string;
+  originalTransactionId?: string | null;
+  purchaseDate?: string | null;
+  expiresAt?: string | null;
+  raw?: Record<string, unknown>;
+}
+
 const PLAN_HIERARCHY: Record<SubscriptionPlanId, number> = {
   free: 0,
   basic: 1,
@@ -97,7 +104,6 @@ const PLAN_HIERARCHY: Record<SubscriptionPlanId, number> = {
   unlimited: 3,
 };
 
-// Get user's subscription
 export async function getUserSubscription(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
@@ -113,7 +119,6 @@ export async function getUserSubscription(userId: string) {
   return data as Database["public"]["Tables"]["subscriptions"]["Row"];
 }
 
-// Check if user has credits
 export async function checkUserCredits(userId: string): Promise<boolean> {
   const subscription = await getUserSubscription(userId);
 
@@ -121,18 +126,15 @@ export async function checkUserCredits(userId: string): Promise<boolean> {
     return false;
   }
 
-  // Check if credits need reset (for free plan)
   if (subscription.plan === "free" && subscription.credits_reset_date) {
     const resetDate = new Date(subscription.credits_reset_date);
     if (resetDate <= new Date()) {
-      // Reset credits
-      const updateData: Database["public"]["Tables"]["subscriptions"]["Update"] =
-        {
-          credits_remaining: subscription.credits_total,
-          credits_reset_date: new Date(
-            Date.now() + 24 * 60 * 60 * 1000,
-          ).toISOString(),
-        };
+      const updateData: Database["public"]["Tables"]["subscriptions"]["Update"] = {
+        credits_remaining: subscription.credits_total,
+        credits_reset_date: new Date(
+          Date.now() + 24 * 60 * 60 * 1000,
+        ).toISOString(),
+      };
 
       await supabaseAdmin
         .from("subscriptions")
@@ -147,7 +149,6 @@ export async function checkUserCredits(userId: string): Promise<boolean> {
   return subscription.credits_remaining > 0;
 }
 
-// Deduct credit from user
 export async function deductCredit(
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -161,7 +162,6 @@ export async function deductCredit(
     return { success: false, error: "Kredi limitiniz doldu." };
   }
 
-  // Deduct credit
   const deductData: Database["public"]["Tables"]["subscriptions"]["Update"] = {
     credits_remaining: subscription.credits_remaining - 1,
   };
@@ -177,15 +177,13 @@ export async function deductCredit(
     return { success: false, error: "Kredi düşülemedi." };
   }
 
-  // Log transaction
-  const transactionData: Database["public"]["Tables"]["transactions"]["Insert"] =
-    {
-      user_id: userId,
-      type: "usage",
-      amount: -1,
-      description: "Masal oluşturma",
-      metadata: { timestamp: new Date().toISOString() },
-    };
+  const transactionData: Database["public"]["Tables"]["transactions"]["Insert"] = {
+    user_id: userId,
+    type: "usage",
+    amount: -1,
+    description: "Masal oluşturma",
+    metadata: { timestamp: new Date().toISOString() },
+  };
 
   const { error: usageTransactionError } = await supabaseAdmin
     .from("transactions")
@@ -200,25 +198,41 @@ export async function deductCredit(
   return { success: true };
 }
 
-// Purchase subscription (fake payment for now)
-export async function purchaseSubscription(
+function getPlanDates(planId: SubscriptionPlanId, now: Date) {
+  const expiresAt =
+    planId === "free"
+      ? null
+      : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const creditsResetDate =
+    planId === "free"
+      ? new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      : planId === "unlimited"
+        ? null
+        : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  return { expiresAt, creditsResetDate };
+}
+
+async function validateSubscriptionChange(
   userId: string,
   planId: SubscriptionPlanId,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<
+  | { success: true; plan: (typeof SUBSCRIPTION_PLANS)[SubscriptionPlanId] }
+  | { success: false; error: string }
+> {
   const plan = SUBSCRIPTION_PLANS[planId];
 
   if (!plan) {
     return { success: false, error: "Geçersiz paket." };
   }
 
-  // Check current subscription
   const currentSubscription = await getUserSubscription(userId);
   if (currentSubscription) {
     const currentTier =
       PLAN_HIERARCHY[currentSubscription.plan as SubscriptionPlanId];
     const newTier = PLAN_HIERARCHY[planId];
 
-    // Prevent downgrade
     if (newTier < currentTier) {
       return {
         success: false,
@@ -227,7 +241,6 @@ export async function purchaseSubscription(
       };
     }
 
-    // Prevent buying the same plan
     if (newTier === currentTier && currentSubscription.plan === planId) {
       return {
         success: false,
@@ -236,29 +249,47 @@ export async function purchaseSubscription(
     }
   }
 
+  return { success: true, plan };
+}
+
+export async function hasProcessedStoreTransaction(transactionId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("transactions")
+    .select("id, user_id")
+    .eq("metadata->>transactionId", transactionId)
+    .limit(1);
+
+  if (error) {
+    console.error("Error checking transaction idempotency:", error);
+    throw error;
+  }
+
+  return Boolean(data && data.length > 0);
+}
+
+export async function activateSubscriptionPurchase(
+  userId: string,
+  planId: SubscriptionPlanId,
+  metadata?: StorePurchaseMetadata,
+): Promise<{ success: boolean; error?: string }> {
+  const validation = await validateSubscriptionChange(userId, planId);
+
+  if (!validation.success) {
+    return validation;
+  }
+
   const now = new Date();
-  const expiresAt =
-    planId === "free"
-      ? null
-      : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  const { expiresAt, creditsResetDate } = getPlanDates(planId, now);
 
-  const creditsResetDate =
-    planId === "free"
-      ? new Date(now.getTime() + 24 * 60 * 60 * 1000) // 1 day
-      : planId === "unlimited"
-        ? null
-        : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-  // Update or create subscription
   const upsertData: Database["public"]["Tables"]["subscriptions"]["Insert"] = {
     user_id: userId,
     plan: planId,
     status: "active",
-    credits_remaining: plan.credits,
-    credits_total: plan.credits,
+    credits_remaining: validation.plan.credits,
+    credits_total: validation.plan.credits,
     credits_reset_date: creditsResetDate?.toISOString() || null,
     started_at: now.toISOString(),
-    expires_at: expiresAt?.toISOString() || null,
+    expires_at: metadata?.expiresAt || expiresAt?.toISOString() || null,
   };
 
   const { error: upsertError } = await supabaseAdmin
@@ -269,23 +300,35 @@ export async function purchaseSubscription(
     });
 
   if (upsertError) {
-    console.error("Error purchasing subscription:", upsertError);
+    console.error("Error activating subscription:", upsertError);
     return { success: false, error: "Satın alma işlemi başarısız." };
   }
 
-  // Log transaction
-  const purchaseTransactionData: Database["public"]["Tables"]["transactions"]["Insert"] =
-    {
-      user_id: userId,
-      type: "purchase",
-      amount: plan.credits,
-      description: `${plan.name} paket satın alımı`,
-      metadata: {
-        plan_id: planId,
-        price: plan.price,
-        timestamp: now.toISOString(),
-      },
-    };
+  const purchaseTransactionData: Database["public"]["Tables"]["transactions"]["Insert"] = {
+    user_id: userId,
+    type: "purchase",
+    amount: validation.plan.credits,
+    description: `${validation.plan.name} paket satın alımı`,
+    metadata: {
+      planId,
+      price: validation.plan.price,
+      timestamp: now.toISOString(),
+      ...(metadata
+        ? {
+            platform: metadata.platform,
+            productId: metadata.productId,
+            transactionId: metadata.transactionId,
+            purchaseToken: metadata.purchaseToken,
+            originalTransactionId: metadata.originalTransactionId ?? null,
+            purchaseDate: metadata.purchaseDate ?? null,
+            expiresAt: metadata.expiresAt ?? null,
+            raw: metadata.raw ?? null,
+          }
+        : {
+            source: "legacy-api",
+          }),
+    },
+  };
 
   const { error: purchaseTransactionError } = await supabaseAdmin
     .from("transactions")
@@ -303,7 +346,13 @@ export async function purchaseSubscription(
   return { success: true };
 }
 
-// Get user's transaction history
+export async function purchaseSubscription(
+  userId: string,
+  planId: SubscriptionPlanId,
+): Promise<{ success: boolean; error?: string }> {
+  return activateSubscriptionPurchase(userId, planId);
+}
+
 export async function getUserTransactions(userId: string, limit = 10) {
   const { data, error } = await supabaseAdmin
     .from("transactions")

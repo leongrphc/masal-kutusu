@@ -1,10 +1,17 @@
 import { Platform } from 'react-native';
-import type { ProductSubscription, ProductSubscriptionAndroid } from 'expo-iap';
+import type {
+  ProductSubscription,
+  ProductSubscriptionAndroid,
+  Purchase,
+  PurchaseIOS,
+} from 'expo-iap';
 import {
+  API_BASE_URL,
   PAID_SUBSCRIPTION_PLAN_IDS,
   SUBSCRIPTION_BILLING_SKUS,
   type PaidSubscriptionPlanId,
 } from '../constants/config';
+import { supabase } from './supabase';
 
 export type BillingBlockReason =
   | 'unsupported-platform'
@@ -30,7 +37,8 @@ export interface BillingPurchaseResult {
   message: string;
 }
 
-const BACKEND_RECEIPT_VALIDATION_READY = false;
+const BACKEND_RECEIPT_VALIDATION_READY =
+  process.env.EXPO_PUBLIC_BILLING_BACKEND_READY === 'true';
 
 let connectionPromise: Promise<void> | null = null;
 
@@ -91,6 +99,69 @@ async function ensureBillingConnection() {
   }
 
   return connectionPromise;
+}
+
+function isPurchaseIOS(purchase: Purchase): purchase is PurchaseIOS {
+  return purchase.platform === 'ios' || purchase.store === 'apple';
+}
+
+function getPurchasePlatform(purchase: Purchase): 'ios' | 'android' {
+  return isPurchaseIOS(purchase) ? 'ios' : 'android';
+}
+
+function getPurchaseTransactionId(purchase: Purchase) {
+  return purchase.transactionId ?? purchase.id;
+}
+
+function getPurchaseToken(purchase: Purchase) {
+  return purchase.purchaseToken ?? null;
+}
+
+async function validateReceiptWithBackend(planId: PaidSubscriptionPlanId, purchase: Purchase) {
+  const {
+    finishTransaction,
+  } = await loadExpoIap();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+  }
+
+  const purchaseToken = getPurchaseToken(purchase);
+  const transactionId = getPurchaseTransactionId(purchase);
+
+  if (!purchaseToken || !transactionId) {
+    throw new Error('Satın alma verisi eksik döndü.');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/subscription/validate-receipt`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      planId,
+      platform: getPurchasePlatform(purchase),
+      productId: purchase.productId,
+      transactionId,
+      purchaseToken,
+      packageNameAndroid: !isPurchaseIOS(purchase) ? purchase.packageNameAndroid ?? undefined : undefined,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Receipt doğrulama başarısız oldu.');
+  }
+
+  await finishTransaction({
+    purchase,
+    isConsumable: false,
+  });
 }
 
 export async function getBillingAvailability(
@@ -193,7 +264,7 @@ export async function startPlanPurchase(
   try {
     const { requestPurchase, ErrorCode } = await loadExpoIap();
 
-    await requestPurchase({
+    const purchase = await requestPurchase({
       request: {
         apple: { sku: availability.sku },
         google: { skus: [availability.sku] },
@@ -201,9 +272,20 @@ export async function startPlanPurchase(
       type: 'subs',
     });
 
+    const resolvedPurchase = Array.isArray(purchase) ? purchase[0] : purchase;
+
+    if (!resolvedPurchase) {
+      return {
+        status: 'error',
+        message: 'Satın alma başlatıldı ancak mağaza işlem verisi dönmedi.',
+      };
+    }
+
+    await validateReceiptWithBackend(planId, resolvedPurchase);
+
     return {
       status: 'started',
-      message: 'Satın alma mağaza üzerinden başlatıldı. Doğrulama tamamlandığında üyeliğiniz güncellenecek.',
+      message: 'Satın alma doğrulandı ve üyeliğiniz güncellendi.',
     };
   } catch (error) {
     const purchaseError = error as { code?: string; message?: string };
