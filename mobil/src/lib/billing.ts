@@ -186,6 +186,14 @@ async function validateReceiptWithBackend(planId: PaidSubscriptionPlanId, purcha
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 503) {
+      throw new Error(data.error || 'Store doğrulama servisi henüz hazır değil.');
+    }
+
+    if (response.status === 409) {
+      throw new Error(data.error || 'Bu satın alma daha önce işlendi.');
+    }
+
     throw new Error(data.error || 'Receipt doğrulama başarısız oldu.');
   }
 
@@ -360,6 +368,13 @@ export async function startPlanPurchase(
     return {
       status: 'blocked',
       message: availability.message ?? 'Satın alma şu anda kullanılamıyor.',
+    };
+  }
+
+  if (!isBillingReady()) {
+    return {
+      status: 'blocked',
+      message: 'Store doğrulama servisi henüz hazır değil.',
     };
   }
 

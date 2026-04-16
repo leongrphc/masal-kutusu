@@ -24,6 +24,8 @@ interface ValidateReceiptBody {
   packageNameAndroid?: string;
 }
 
+class ReceiptConfigurationError extends Error {}
+
 function json(data: unknown, status = 200) {
   return NextResponse.json(data, {
     status,
@@ -46,11 +48,11 @@ async function validateApplePurchase(body: Required<Pick<ValidateReceiptBody, "p
   const appleRootCertificates = process.env.APPLE_ROOT_CERTIFICATES_BASE64;
 
   if (!bundleId) {
-    throw new Error("APPLE_BUNDLE_ID is not set");
+    throw new ReceiptConfigurationError("Apple billing yapılandırması eksik.");
   }
 
   if (!appleRootCertificates) {
-    throw new Error("APPLE_ROOT_CERTIFICATES_BASE64 is not set");
+    throw new ReceiptConfigurationError("Apple receipt doğrulama sertifikaları eksik.");
   }
 
   const verifier = new SignedDataVerifier(
@@ -101,7 +103,7 @@ async function validateAndroidPurchase(body: Required<Pick<ValidateReceiptBody, 
     body.packageNameAndroid || process.env.GOOGLE_PLAY_PACKAGE_NAME;
 
   if (!packageName) {
-    throw new Error("GOOGLE_PLAY_PACKAGE_NAME is not set");
+    throw new ReceiptConfigurationError("Google Play billing yapılandırması eksik.");
   }
 
   const auth = new google.auth.GoogleAuth({
@@ -214,6 +216,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Validate receipt error:", error);
+
+    if (error instanceof ReceiptConfigurationError) {
+      return json({ error: error.message }, 503);
+    }
+
     return json(
       {
         error:
