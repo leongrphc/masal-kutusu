@@ -37,10 +37,32 @@ export interface BillingPurchaseResult {
   message: string;
 }
 
+interface BackendBillingReadiness {
+  ready: boolean;
+  platforms?: {
+    ios?: {
+      ready: boolean;
+      message: string | null;
+    };
+    android?: {
+      ready: boolean;
+      message: string | null;
+    };
+  };
+}
+
 const BACKEND_RECEIPT_VALIDATION_READY =
   process.env.EXPO_PUBLIC_BILLING_BACKEND_READY === 'true';
+const BILLING_READINESS_CACHE_TTL_MS = 60_000;
 
 let connectionPromise: Promise<void> | null = null;
+let backendReadinessPromise: Promise<BackendBillingReadiness> | null = null;
+let backendReadinessCache:
+  | {
+      value: BackendBillingReadiness;
+      expiresAt: number;
+    }
+  | null = null;
 
 function isNativeStorePlatform() {
   return Platform.OS === 'ios' || Platform.OS === 'android';
@@ -87,8 +109,84 @@ function getRestoreMessage(restoredCount: number) {
     : 'Store satın alımlarınız yeniden eşitlendi ve en güncel üyeliğiniz uygulandı.';
 }
 
-function isBillingReady() {
-  return BACKEND_RECEIPT_VALIDATION_READY;
+function getBackendPlatform() {
+  return Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : null;
+}
+
+function isBackendReadyForCurrentPlatform(readiness?: BackendBillingReadiness) {
+  const platform = getBackendPlatform();
+
+  if (!platform) {
+    return false;
+  }
+
+  return readiness?.platforms?.[platform]?.ready ?? false;
+}
+
+function getBackendNotReadyMessage(readiness?: BackendBillingReadiness) {
+  const platform = getBackendPlatform();
+
+  if (!platform) {
+    return 'Store doğrulama servisi henüz hazır değil.';
+  }
+
+  return (
+    readiness?.platforms?.[platform]?.message ??
+    'Store doğrulama servisi henüz hazır değil.'
+  );
+}
+
+async function fetchBackendBillingReadiness(forceRefresh = false) {
+  if (!BACKEND_RECEIPT_VALIDATION_READY) {
+    return {
+      ready: false,
+      platforms: undefined,
+    } satisfies BackendBillingReadiness;
+  }
+
+  const now = Date.now();
+  if (!forceRefresh && backendReadinessCache && backendReadinessCache.expiresAt > now) {
+    return backendReadinessCache.value;
+  }
+
+  if (!forceRefresh && backendReadinessPromise) {
+    return backendReadinessPromise;
+  }
+
+  backendReadinessPromise = fetch(`${API_BASE_URL}/api/subscription/readiness`)
+    .then(async (response) => {
+      const data = (await response.json().catch(() => ({}))) as BackendBillingReadiness;
+
+      if (!response.ok) {
+        throw new Error('Billing readiness alınamadı.');
+      }
+
+      const readiness: BackendBillingReadiness = {
+        ready: Boolean(data.ready),
+        platforms: data.platforms,
+      };
+
+      backendReadinessCache = {
+        value: readiness,
+        expiresAt: Date.now() + BILLING_READINESS_CACHE_TTL_MS,
+      };
+
+      return readiness;
+    })
+    .catch(() => ({
+      ready: false,
+      platforms: undefined,
+    } satisfies BackendBillingReadiness))
+    .finally(() => {
+      backendReadinessPromise = null;
+    });
+
+  return backendReadinessPromise;
+}
+
+async function isBillingReady() {
+  const readiness = await fetchBackendBillingReadiness();
+  return isBackendReadyForCurrentPlatform(readiness);
 }
 
 function createBlockedAvailability(
@@ -254,11 +352,13 @@ export async function getBillingAvailability(
       }
     }
 
-    if (!BACKEND_RECEIPT_VALIDATION_READY) {
+    const readiness = await fetchBackendBillingReadiness();
+
+    if (!isBackendReadyForCurrentPlatform(readiness)) {
       return createBlockedAvailability(
         planId,
         'backend-not-ready',
-        'Store ürünleri için backend receipt doğrulama ve abonelik aktivasyonu henüz tamamlanmadı.',
+        getBackendNotReadyMessage(readiness),
         { sku, product },
       );
     }
@@ -289,10 +389,12 @@ export async function getAllBillingAvailability(): Promise<BillingAvailabilityMa
 }
 
 export async function restoreBillingPurchases(): Promise<BillingPurchaseResult> {
-  if (!isBillingReady()) {
+  const readiness = await fetchBackendBillingReadiness();
+
+  if (!isBackendReadyForCurrentPlatform(readiness)) {
     return {
       status: 'blocked',
-      message: 'Restore işlemi backend doğrulama tamamlandığında açılacak.',
+      message: getBackendNotReadyMessage(readiness),
     };
   }
 
@@ -371,10 +473,10 @@ export async function startPlanPurchase(
     };
   }
 
-  if (!isBillingReady()) {
+  if (!(await isBillingReady())) {
     return {
       status: 'blocked',
-      message: 'Store doğrulama servisi henüz hazır değil.',
+      message: getBackendNotReadyMessage(await fetchBackendBillingReadiness()),
     };
   }
 
