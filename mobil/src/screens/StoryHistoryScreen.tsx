@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { GlassCard } from '../components/GlassCard';
@@ -35,6 +36,7 @@ type HistoryFilter = 'all' | 'favorites' | 'audio';
 
 export default function StoryHistoryScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { colors } = useTheme();
   const [history, setHistory] = useState<StoryHistoryEntry[]>([]);
@@ -110,7 +112,10 @@ export default function StoryHistoryScreen() {
     <GradientBackground>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -299,7 +304,7 @@ export default function StoryHistoryScreen() {
 
 const styles = StyleSheet.create({
   scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

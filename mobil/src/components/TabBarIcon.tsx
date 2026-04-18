@@ -1,20 +1,22 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { LucideIcon } from 'lucide-react-native';
 import { BorderRadius, Colors } from '../constants/theme';
 
 interface TabBarIconProps {
-  icon: string;
-  activeIcon?: string;
+  icon: LucideIcon;
   color: string;
   focused: boolean;
 }
 
-export function TabBarIcon({ icon, activeIcon, color, focused }: TabBarIconProps) {
+export function TabBarIcon({ icon: Icon, color, focused }: TabBarIconProps) {
   return (
     <View style={[styles.container, focused && styles.containerActive]}>
-      <Text style={[styles.icon, { color }, focused && styles.iconActive]}>
-        {focused ? (activeIcon ?? icon) : icon}
-      </Text>
+      <Icon
+        size={focused ? 22 : 20}
+        color={color}
+        strokeWidth={focused ? 2.5 : 2.1}
+      />
     </View>
   );
 }
@@ -38,11 +40,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 4,
-  },
-  icon: {
-    fontSize: 20,
-  },
-  iconActive: {
-    fontSize: 22,
   },
 });

@@ -14,6 +14,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Colors, BorderRadius } from '../constants/theme';
+import { Sparkles, Clock3, UserRound } from 'lucide-react-native';
 import { TabBarIcon } from '../components/TabBarIcon';
 
 export type RootStackParamList = {
@@ -92,7 +93,7 @@ function AuthenticatedTabs() {
           title: 'Masal Oluştur',
           tabBarLabel: 'Masal',
           tabBarAccessibilityLabel: 'Masal oluştur sekmesi',
-          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="✨" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={Sparkles} color={color} focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -102,7 +103,7 @@ function AuthenticatedTabs() {
           title: 'Geçmiş',
           tabBarLabel: 'Geçmiş',
           tabBarAccessibilityLabel: 'Masal geçmişi sekmesi',
-          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="🕘" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={Clock3} color={color} focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -112,7 +113,7 @@ function AuthenticatedTabs() {
           title: 'Hesabım',
           tabBarLabel: 'Hesap',
           tabBarAccessibilityLabel: 'Hesap sekmesi',
-          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="👤" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon={UserRound} color={color} focused={focused} />,
         }}
       />
     </Tab.Navigator>
@@ -162,8 +163,5 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 15,
     fontWeight: '600',
-  },
-  tabIcon: {
-    fontSize: 18,
   },
 });
