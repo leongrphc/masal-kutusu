@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
-import { API_BASE_URL } from '../constants/config';
+import { initializeSubscription } from '../lib/subscription';
 
 interface AuthContextType {
   user: User | null;
@@ -51,12 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!error && data.session) {
       try {
-        await fetch(`${API_BASE_URL}/api/auth/init-subscription`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${data.session.access_token}`,
-          },
-        });
+        await initializeSubscription(data.session.access_token);
       } catch (initError) {
         console.error('Failed to initialize subscription:', initError);
       }

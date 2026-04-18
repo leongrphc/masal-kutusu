@@ -18,6 +18,10 @@ import { Button } from '../components/Button';
 import { Colors, BorderRadius } from '../constants/theme';
 import { API_BASE_URL } from '../constants/config';
 import { supabase } from '../lib/supabase';
+import {
+  fetchCurrentSubscriptionWithInitialization,
+  fetchSubscriptionTransactions,
+} from '../lib/subscription';
 
 interface UserSubscription {
   plan: string;
@@ -181,51 +185,20 @@ export default function DashboardScreen() {
         return;
       }
 
-      const headers = { Authorization: `Bearer ${session.access_token}` };
       let nextSubscription: UserSubscription | null = null;
       let nextTransactions: Transaction[] = [];
       let subscriptionFailed = false;
       let transactionsFailed = false;
 
-      const subResponse = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
-        headers,
-      });
-
-      if (subResponse.status === 404) {
-        const initResponse = await fetch(`${API_BASE_URL}/api/auth/init-subscription`, {
-          method: 'POST',
-          headers,
-        });
-
-        if (!initResponse.ok) {
-          subscriptionFailed = true;
-        } else {
-          const retryResponse = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
-            headers,
-          });
-
-          if (retryResponse.ok) {
-            const subData = await retryResponse.json();
-            nextSubscription = subData.subscription;
-          } else {
-            subscriptionFailed = true;
-          }
-        }
-      } else if (subResponse.ok) {
-        const subData = await subResponse.json();
-        nextSubscription = subData.subscription;
-      } else {
+      try {
+        nextSubscription = await fetchCurrentSubscriptionWithInitialization<UserSubscription>(session.access_token);
+      } catch {
         subscriptionFailed = true;
       }
 
-      const transResponse = await fetch(`${API_BASE_URL}/api/subscription/transactions?t=${Date.now()}`, {
-        headers,
-      });
-
-      if (transResponse.ok) {
-        const transData = await transResponse.json();
-        nextTransactions = transData.transactions;
-      } else {
+      try {
+        nextTransactions = await fetchSubscriptionTransactions<Transaction>(session.access_token);
+      } catch {
         transactionsFailed = true;
       }
 

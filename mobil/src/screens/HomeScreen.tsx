@@ -16,6 +16,7 @@ import { AudioPlayer } from '../components/AudioPlayer';
 import { Colors, BorderRadius } from '../constants/theme';
 import { API_BASE_URL, EXAMPLE_TOPICS } from '../constants/config';
 import { saveStoryToHistory } from '../lib/storyHistory';
+import { fetchCurrentSubscription } from '../lib/subscription';
 
 interface StoryResult {
   story: string;
@@ -84,13 +85,8 @@ export default function HomeScreen() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setSubscription(data.subscription);
-        }
+        const nextSubscription = await fetchCurrentSubscription<Subscription>(session.access_token);
+        setSubscription(nextSubscription);
       } catch (err) {
         console.error('Subscription fetch error:', err);
       } finally {
@@ -158,13 +154,8 @@ export default function HomeScreen() {
       });
 
       // Abonelik bilgisini güncelle
-      const subResponse = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (subResponse.ok) {
-        const subData = await subResponse.json();
-        setSubscription(subData.subscription);
-      }
+      const nextSubscription = await fetchCurrentSubscription<Subscription>(session.access_token);
+      setSubscription(nextSubscription);
     } catch (err: any) {
       setGenerationStatus(null);
       setError(err.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');

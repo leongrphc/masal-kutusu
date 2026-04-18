@@ -29,6 +29,7 @@ import {
   startPlanPurchase,
   type BillingPlanAvailability,
 } from '../lib/billing';
+import { fetchCurrentSubscription } from '../lib/subscription';
 
 interface Subscription {
   plan: SubscriptionPlanId;
@@ -97,16 +98,7 @@ export default function PricingScreen() {
       return null;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
-
-    if (!response.ok) {
-      throw new Error('Subscription fetch failed');
-    }
-
-    const data = await response.json();
-    return (data.subscription ?? null) as Subscription | null;
+    return fetchCurrentSubscription<Subscription>(session.access_token);
   }, [session]);
 
   const fetchBillingAvailability = useCallback(async (forceRefresh = false) => {
