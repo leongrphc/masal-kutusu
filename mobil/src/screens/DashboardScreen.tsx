@@ -274,22 +274,6 @@ export default function DashboardScreen() {
     await signOut();
   };
 
-  const showInitialLoading = authLoading || (loading && !subscription && transactions.length === 0 && !error);
-
-  if (showInitialLoading) {
-    return (
-      <GradientBackground style={styles.loadingContainer}>
-        <GlassCard style={styles.loadingCard}>
-          <ActivityIndicator size="large" color={Colors.primary[500]} />
-          <Text style={[styles.loadingTitle, { color: colors.text }]}>Kontrol paneli hazırlanıyor</Text>
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Abonelik ve işlem bilgilerinizi güncelliyoruz.</Text>
-        </GlassCard>
-      </GradientBackground>
-    );
-  }
-
-  if (!user) return null;
-
   const creditsPercentage = subscription && subscription.credits_total > 0
     ? clampPercentage((subscription.credits_remaining / subscription.credits_total) * 100)
     : 0;
@@ -310,6 +294,21 @@ export default function DashboardScreen() {
       : transactions.filter((transaction) => transaction.type === transactionFilter),
     [transactionFilter, transactions],
   );
+  const showInitialLoading = authLoading || (loading && !subscription && transactions.length === 0 && !error);
+
+  if (showInitialLoading) {
+    return (
+      <GradientBackground style={styles.loadingContainer}>
+        <GlassCard style={styles.loadingCard}>
+          <ActivityIndicator size="large" color={Colors.primary[500]} />
+          <Text style={[styles.loadingTitle, { color: colors.text }]}>Kontrol paneli hazırlanıyor</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Abonelik ve işlem bilgilerinizi güncelliyoruz.</Text>
+        </GlassCard>
+      </GradientBackground>
+    );
+  }
+
+  if (!user) return null;
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Süresiz';
