@@ -17,6 +17,23 @@ import { Colors, BorderRadius } from '../constants/theme';
 import { Sparkles, Clock3, UserRound } from 'lucide-react-native';
 import { TabBarIcon } from '../components/TabBarIcon';
 
+function renderTabLabel(label: string, color: string, focused: boolean) {
+  return (
+    <Text
+      style={[
+        styles.tabLabel,
+        {
+          color,
+          opacity: focused ? 1 : 0.78,
+          fontSize: focused ? 12 : 11,
+        },
+      ]}
+    >
+      {label}
+    </Text>
+  );
+}
+
 export type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -82,7 +99,7 @@ function AuthenticatedTabs() {
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '700',
-          marginTop: 2,
+          marginTop: 0,
         },
       }}
     >
@@ -91,7 +108,7 @@ function AuthenticatedTabs() {
         component={HomeScreen}
         options={{
           title: 'Masal Oluştur',
-          tabBarLabel: 'Masal',
+          tabBarLabel: ({ color, focused }) => renderTabLabel('Masal', color, focused),
           tabBarAccessibilityLabel: 'Masal oluştur sekmesi',
           tabBarIcon: ({ color, focused }) => <TabBarIcon icon={Sparkles} color={color} focused={focused} />,
         }}
@@ -101,7 +118,7 @@ function AuthenticatedTabs() {
         component={StoryHistoryScreen}
         options={{
           title: 'Geçmiş',
-          tabBarLabel: 'Geçmiş',
+          tabBarLabel: ({ color, focused }) => renderTabLabel('Geçmiş', color, focused),
           tabBarAccessibilityLabel: 'Masal geçmişi sekmesi',
           tabBarIcon: ({ color, focused }) => <TabBarIcon icon={Clock3} color={color} focused={focused} />,
         }}
@@ -111,7 +128,7 @@ function AuthenticatedTabs() {
         component={DashboardScreen}
         options={{
           title: 'Hesabım',
-          tabBarLabel: 'Hesap',
+          tabBarLabel: ({ color, focused }) => renderTabLabel('Hesap', color, focused),
           tabBarAccessibilityLabel: 'Hesap sekmesi',
           tabBarIcon: ({ color, focused }) => <TabBarIcon icon={UserRound} color={color} focused={focused} />,
         }}
@@ -163,5 +180,10 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  tabLabel: {
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 1,
   },
 });
