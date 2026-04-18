@@ -143,6 +143,12 @@ export default function HomeScreen() {
       return;
     }
 
+    if (subscription && subscription.credits_remaining <= 0) {
+      setGenerationStatus(null);
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setGenerationStatus('Masal kurgulanıyor...');
@@ -431,6 +437,9 @@ export default function HomeScreen() {
             <View style={styles.creditHintBox}>
               <Text style={[styles.creditHintTitle, { color: colors.text }]}>Bu işlem 1 kredi kullanır</Text>
               <Text style={[styles.creditHintText, { color: colors.textSecondary }]}>Şu an hesabınızda {creditsRemaining} kredi var. Masal oluşturulduktan sonra kalan kredi bilginiz otomatik güncellenecek.</Text>
+              {creditsRemaining <= 0 ? (
+                <Text style={styles.creditWarningText}>Yeni masal oluşturmak için önce paketinizi yükseltmeniz gerekiyor.</Text>
+              ) : null}
             </View>
           ) : null}
 
@@ -652,6 +661,13 @@ const styles = StyleSheet.create({
   },
   creditHintTitle: { fontSize: 13, fontWeight: '700' },
   creditHintText: { fontSize: 12, lineHeight: 18 },
+  creditWarningText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#B45309',
+    fontWeight: '700',
+    marginTop: 4,
+  },
   progressBox: {
     flexDirection: 'row',
     alignItems: 'center',
