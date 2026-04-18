@@ -13,7 +13,8 @@ import StoryHistoryScreen from '../screens/StoryHistoryScreen';
 import { GradientBackground } from '../components/GradientBackground';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Colors } from '../constants/theme';
+import { Colors, BorderRadius } from '../constants/theme';
+import { TabBarIcon } from '../components/TabBarIcon';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -63,13 +64,24 @@ function AuthenticatedTabs() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.surfaceBorder,
-          height: 72,
-          paddingTop: 8,
-          paddingBottom: 8,
+          borderTopWidth: 1,
+          height: 82,
+          paddingTop: 10,
+          paddingBottom: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+          elevation: 8,
+        },
+        tabBarItemStyle: {
+          borderRadius: BorderRadius.lg,
+          marginHorizontal: 4,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '600',
+          fontWeight: '700',
+          marginTop: 2,
         },
       }}
     >
@@ -79,7 +91,8 @@ function AuthenticatedTabs() {
         options={{
           title: 'Masal Oluştur',
           tabBarLabel: 'Masal',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>✨</Text>,
+          tabBarAccessibilityLabel: 'Masal oluştur sekmesi',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="✨" color={color} focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -88,7 +101,8 @@ function AuthenticatedTabs() {
         options={{
           title: 'Geçmiş',
           tabBarLabel: 'Geçmiş',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>🕘</Text>,
+          tabBarAccessibilityLabel: 'Masal geçmişi sekmesi',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="🕘" color={color} focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -97,7 +111,8 @@ function AuthenticatedTabs() {
         options={{
           title: 'Hesabım',
           tabBarLabel: 'Hesap',
-          tabBarIcon: ({ color }) => <Text style={[styles.tabIcon, { color }]}>👤</Text>,
+          tabBarAccessibilityLabel: 'Hesap sekmesi',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon icon="👤" color={color} focused={focused} />,
         }}
       />
     </Tab.Navigator>

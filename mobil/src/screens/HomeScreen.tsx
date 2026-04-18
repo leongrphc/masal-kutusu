@@ -4,6 +4,7 @@ import {
   StyleSheet, Alert, ActivityIndicator, Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CreateStoryParams } from '../navigation/AppNavigator';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
@@ -57,6 +58,7 @@ function getGenerationStatusMessage(result: StoryResult | null, loading: boolean
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
   const { user, session } = useAuth();
   const { colors, mode, toggleTheme } = useTheme();
 
@@ -235,7 +237,7 @@ export default function HomeScreen() {
     <GradientBackground>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -247,7 +249,12 @@ export default function HomeScreen() {
           </View>
           <View style={styles.navActions}>
             {/* Theme Toggle */}
-            <TouchableOpacity onPress={toggleTheme} style={[styles.themeBtn, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity
+              onPress={toggleTheme}
+              style={[styles.themeBtn, { backgroundColor: colors.surface }]}
+              accessibilityRole="button"
+              accessibilityLabel={mode === 'light' ? 'Karanlık temaya geç' : 'Aydınlık temaya geç'}
+            >
               <Text style={{ fontSize: 18 }}>{mode === 'light' ? '🌙' : '☀️'}</Text>
             </TouchableOpacity>
 
@@ -264,14 +271,18 @@ export default function HomeScreen() {
                     </Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Dashboard' })}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('AppTabs', { screen: 'Dashboard' })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Hesap ekranını aç"
+                >
                   <LinearGradient
                     colors={[Colors.primary[500], Colors.warm[500]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.accountBtn}
                   >
-                    <Text style={styles.accountBtnText}>Hesabım</Text>
+                    <Text style={styles.accountBtnText}>Hesap</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </>
@@ -280,10 +291,16 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   onPress={() => navigation.navigate('Login')}
                   style={[styles.navBtn, { backgroundColor: colors.surface }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Giriş ekranını aç"
                 >
                   <Text style={[styles.navBtnText, { color: colors.textSecondary }]}>Giriş</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Register')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Kayıt ol ekranını aç"
+                >
                   <LinearGradient
                     colors={[Colors.primary[500], Colors.warm[500]]}
                     start={{ x: 0, y: 0 }}
@@ -590,22 +607,32 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 50, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
 
   navBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    gap: 12,
+    flexWrap: 'wrap',
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   logoEmoji: { fontSize: 28 },
   logoText: {
     fontSize: 18,
     fontWeight: '700',
     color: Colors.primary[500],
   },
-  navActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  navActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    rowGap: 8,
+  },
   themeBtn: {
     width: 36,
     height: 36,
@@ -621,24 +648,28 @@ const styles = StyleSheet.create({
   creditBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: BorderRadius.full,
-    gap: 4,
+    gap: 3,
+    maxWidth: 56,
+    minHeight: 36,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 1,
   },
-  creditIcon: { fontSize: 14 },
-  creditText: { fontSize: 12, fontWeight: '600' },
+  creditIcon: { fontSize: 12 },
+  creditText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
   accountBtn: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: BorderRadius.full,
+    minHeight: 36,
+    justifyContent: 'center',
   },
-  accountBtnText: { color: Colors.white, fontSize: 13, fontWeight: '600' },
+  accountBtnText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
   navBtn: {
     paddingHorizontal: 14,
     paddingVertical: 8,
