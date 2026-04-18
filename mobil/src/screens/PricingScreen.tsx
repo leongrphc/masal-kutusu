@@ -40,7 +40,7 @@ interface Subscription {
 }
 
 interface FeedbackState {
-  type: 'error' | 'info';
+  type: 'error' | 'info' | 'success';
   title: string;
   message: string;
 }
@@ -75,31 +75,42 @@ function getBillingFeedback(result: { status: 'blocked' | 'cancelled' | 'started
 }
 
 function getFeedbackCardStyle(type: FeedbackState['type']) {
-  return type === 'error'
-    ? {
-        backgroundColor: 'rgba(239,68,68,0.1)',
-        borderColor: 'rgba(239,68,68,0.3)',
-        titleColor: '#B91C1C',
-        textColor: '#DC2626',
-      }
-    : {
-        backgroundColor: 'rgba(59,130,246,0.1)',
-        borderColor: 'rgba(59,130,246,0.25)',
-        titleColor: '#1D4ED8',
-        textColor: '#1D4ED8',
-      };
+  if (type === 'error') {
+    return {
+      backgroundColor: 'rgba(239,68,68,0.1)',
+      borderColor: 'rgba(239,68,68,0.3)',
+      titleColor: '#B91C1C',
+      textColor: '#DC2626',
+    };
+  }
+
+  if (type === 'success') {
+    return {
+      backgroundColor: 'rgba(34,197,94,0.12)',
+      borderColor: 'rgba(34,197,94,0.3)',
+      titleColor: '#15803D',
+      textColor: '#16A34A',
+    };
+  }
+
+  return {
+    backgroundColor: 'rgba(59,130,246,0.1)',
+    borderColor: 'rgba(59,130,246,0.25)',
+    titleColor: '#1D4ED8',
+    textColor: '#1D4ED8',
+  };
 }
 
 function getPlanSuccessLabel(planId: PaidSubscriptionPlanId) {
   switch (planId) {
     case 'basic':
-      return 'Temel paketiniz aktif edildi.';
+      return '🎉 Temel paketiniz aktif!';
     case 'premium':
-      return 'Premium paketiniz aktif edildi.';
+      return '🎉 Premium paketiniz aktif!';
     case 'unlimited':
-      return 'Sınırsız paketiniz aktif edildi.';
+      return '🎉 Sınırsız paketiniz aktif!';
     default:
-      return 'Üyeliğiniz güncellendi.';
+      return '🎉 Üyeliğiniz güncellendi!';
   }
 }
 
@@ -271,9 +282,9 @@ export default function PricingScreen() {
       setFeedback(
         result.status === 'started'
           ? {
-              type: 'info',
+              type: 'success',
               title: getPlanSuccessLabel(planId),
-              message: result.message,
+              message: 'Satın alımınız tamamlandı. Yeni paketinizin tüm özelliklerini hemen kullanmaya başlayabilirsiniz.',
             }
           : getBillingFeedback(result),
       );
@@ -281,7 +292,9 @@ export default function PricingScreen() {
       await refreshScreenData(true);
 
       if (result.status === 'started') {
-        navigation.goBack();
+        setTimeout(() => {
+          navigation.goBack();
+        }, 2500);
       }
     } finally {
       setLoading(null);
@@ -497,6 +510,9 @@ export default function PricingScreen() {
                 },
               ]}
             >
+              {feedback.type === 'success' ? (
+                <Text style={styles.feedbackIcon}>✅</Text>
+              ) : null}
               <Text style={[styles.feedbackTitle, { color: feedbackStyle.titleColor }]}>{feedback.title}</Text>
               <Text style={[styles.feedbackText, { color: feedbackStyle.textColor }]}>{feedback.message}</Text>
             </View>
@@ -716,6 +732,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 6,
   },
+  feedbackIcon: { fontSize: 28, textAlign: 'center' },
   feedbackTitle: { fontSize: 14, fontWeight: '700' },
   feedbackText: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
 
