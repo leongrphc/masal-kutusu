@@ -333,6 +333,9 @@ async function validateReceiptWithBackend(planId: PaidSubscriptionPlanId, purcha
 
 export async function getBillingAvailability(
   planId: PaidSubscriptionPlanId,
+  options?: {
+    forceRefresh?: boolean;
+  },
 ): Promise<BillingPlanAvailability> {
   if (DEBUG_FAKE_BILLING_ENABLED) {
     return {
@@ -392,7 +395,7 @@ export async function getBillingAvailability(
       }
     }
 
-    const readiness = await fetchBackendBillingReadiness();
+    const readiness = await fetchBackendBillingReadiness(options?.forceRefresh);
 
     if (!isBackendReadyForCurrentPlatform(readiness)) {
       return createBlockedAvailability(
@@ -420,9 +423,11 @@ export async function getBillingAvailability(
   }
 }
 
-export async function getAllBillingAvailability(): Promise<BillingAvailabilityMap> {
+export async function getAllBillingAvailability(options?: {
+  forceRefresh?: boolean;
+}): Promise<BillingAvailabilityMap> {
   const entries = await Promise.all(
-    PAID_SUBSCRIPTION_PLAN_IDS.map(async (planId) => [planId, await getBillingAvailability(planId)] as const),
+    PAID_SUBSCRIPTION_PLAN_IDS.map(async (planId) => [planId, await getBillingAvailability(planId, options)] as const),
   );
 
   return Object.fromEntries(entries) as BillingAvailabilityMap;
