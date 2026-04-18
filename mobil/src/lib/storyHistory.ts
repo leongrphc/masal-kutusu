@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export type StoryAgeRange = '3-5' | '6-8';
 export type StoryLength = 'short' | 'medium';
@@ -9,6 +10,7 @@ export interface StoryHistoryEntry {
   topic: string;
   story: string;
   audioBase64?: string;
+  audioFileUri?: string;
   mimeType?: string;
   ageRange: StoryAgeRange;
   length: StoryLength;
@@ -28,12 +30,49 @@ interface SaveStoryHistoryInput {
   theme: StoryTheme;
 }
 
+const AUDIO_STORAGE_DIRECTORY = `${FileSystem.documentDirectory}story-history-audio`;
+
 const STORAGE_PREFIX = 'masal-kutusu:story-history';
 const MAX_STORY_HISTORY = 20;
 const MAX_AUDIO_BASE64_LENGTH = 350_000;
 
 function getStorageKey(userId: string) {
   return `${STORAGE_PREFIX}:${userId}`;
+}
+
+async function ensureAudioStorageDirectory() {
+  const info = await FileSystem.getInfoAsync(AUDIO_STORAGE_DIRECTORY);
+
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(AUDIO_STORAGE_DIRECTORY, { intermediates: true });
+  }
+}
+
+function getAudioFileExtension(mimeType?: string) {
+  if (!mimeType) {
+    return 'audio';
+  }
+
+  if (mimeType.includes('mpeg')) {
+    return 'mp3';
+  }
+
+  if (mimeType.includes('wav')) {
+    return 'wav';
+  }
+
+  return 'audio';
+}
+
+async function persistAudioToFile(entryId: string, audioBase64?: string, mimeType?: string) {
+  if (!audioBase64 || !mimeType) {
+    return null;
+  }
+
+  await ensureAudioStorageDirectory();
+  const fileUri = `${AUDIO_STORAGE_DIRECTORY}/${entryId}.${getAudioFileExtension(mimeType)}`;
+  await FileSystem.writeAsStringAsync(fileUri, audioBase64, { encoding: 'base64' });
+  return fileUri;
 }
 
 function normalizeHistoryEntry(entry: StoryHistoryEntry): StoryHistoryEntry {
@@ -48,8 +87,9 @@ function normalizeHistoryEntry(entry: StoryHistoryEntry): StoryHistoryEntry {
 
   return {
     ...normalizedEntry,
+    audioFileUri: normalizedEntry.audioFileUri,
     audioBase64: undefined,
-    mimeType: undefined,
+    mimeType: normalizedEntry.mimeType,
   };
 }
 
@@ -63,12 +103,16 @@ function sortHistoryEntries(entries: StoryHistoryEntry[]) {
   });
 }
 
-function createHistoryEntry(userEntry: SaveStoryHistoryInput): StoryHistoryEntry {
+async function createHistoryEntry(userEntry: SaveStoryHistoryInput): Promise<StoryHistoryEntry> {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const audioFileUri = await persistAudioToFile(id, userEntry.audioBase64, userEntry.mimeType);
+
   return normalizeHistoryEntry({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id,
     topic: userEntry.topic,
     story: userEntry.story,
     audioBase64: userEntry.audioBase64,
+    audioFileUri: audioFileUri ?? undefined,
     mimeType: userEntry.mimeType,
     ageRange: userEntry.ageRange,
     length: userEntry.length,
@@ -96,7 +140,7 @@ export async function getStoryHistory(userId: string) {
 }
 
 export async function saveStoryToHistory(userId: string, entry: SaveStoryHistoryInput) {
-  const nextEntry = createHistoryEntry(entry);
+  const nextEntry = await createHistoryEntry(entry);
 
   const existingHistory = await getStoryHistory(userId);
   const filteredHistory = existingHistory.filter((item) => item.story !== nextEntry.story);

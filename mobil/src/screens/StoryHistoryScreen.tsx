@@ -236,8 +236,12 @@ export default function StoryHistoryScreen() {
                     {story.story}
                   </Text>
 
-                  {story.audioBase64 && story.mimeType ? (
-                    <AudioPlayer audioBase64={story.audioBase64} mimeType={story.mimeType} />
+                  {(story.audioBase64 || story.audioFileUri) && story.mimeType ? (
+                    <AudioPlayer
+                      audioBase64={story.audioBase64}
+                      audioUri={story.audioFileUri}
+                      mimeType={story.mimeType}
+                    />
                   ) : null}
 
                   <View style={styles.actionRow}>

@@ -16,7 +16,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { File, Paths } from 'expo-file-system/next';
 
 interface AudioPlayerProps {
-  audioBase64: string;
+  audioBase64?: string;
+  audioUri?: string;
   mimeType: string;
 }
 
@@ -47,7 +48,7 @@ function createAudioFileName(mimeType: string) {
   return `masal_audio_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${getAudioExtension(mimeType)}`;
 }
 
-export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
+export function AudioPlayer({ audioBase64, audioUri, mimeType }: AudioPlayerProps) {
   const { colors } = useTheme();
   const soundRef = useRef<Audio.Sound | null>(null);
   const audioFileRef = useRef<File | null>(null);
@@ -108,7 +109,7 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
     setDuration(0);
 
     try {
-      if (!audioBase64.trim()) {
+      if (!audioBase64?.trim() && !audioUri?.trim()) {
         throw new Error('Ses verisi bulunamadı.');
       }
 
@@ -124,14 +125,21 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
         staysActiveInBackground: true,
       });
 
-      const audioFile = new File(Paths.cache, createAudioFileName(mimeType));
-      audioFileRef.current = audioFile;
-      await FileSystem.writeAsStringAsync(audioFile.uri, audioBase64, {
-        encoding: 'base64',
-      });
+      let sourceUri = audioUri ?? null;
+      let temporaryAudioFile: File | null = null;
+
+      if (!sourceUri) {
+        const audioFile = new File(Paths.cache, createAudioFileName(mimeType));
+        temporaryAudioFile = audioFile;
+        audioFileRef.current = audioFile;
+        await FileSystem.writeAsStringAsync(audioFile.uri, audioBase64!, {
+          encoding: 'base64',
+        });
+        sourceUri = audioFile.uri;
+      }
 
       const { sound: newSound, status } = await Audio.Sound.createAsync(
-        { uri: audioFile.uri },
+        { uri: sourceUri },
         {
           shouldPlay: false,
           progressUpdateIntervalMillis: 250,
@@ -141,9 +149,9 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
 
       if (!isMounted()) {
         await newSound.unloadAsync().catch(() => undefined);
-        if (audioFileRef.current === audioFile) {
+        if (temporaryAudioFile && audioFileRef.current === temporaryAudioFile) {
           try {
-            audioFile.delete();
+            temporaryAudioFile.delete();
           } catch (error) {
             console.warn('Audio temp file silinemedi:', error);
           }
@@ -168,7 +176,7 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
         setIsPreparing(false);
       }
     }
-  }, [audioBase64, cleanupAudioResources, mimeType, onPlaybackStatusUpdate]);
+  }, [audioBase64, audioUri, cleanupAudioResources, mimeType, onPlaybackStatusUpdate]);
 
   useEffect(() => {
     let isMounted = true;
