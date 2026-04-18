@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -103,6 +105,30 @@ function getPlanSuccessLabel(planId: PaidSubscriptionPlanId) {
 
 function getRestoreSuccessLabel() {
   return 'Store satın alımlarınız hesabınıza yeniden uygulandı.';
+}
+
+function getSubscriptionManagementUrl() {
+  if (Platform.OS === 'ios') {
+    return 'itms-apps://apps.apple.com/account/subscriptions';
+  }
+
+  if (Platform.OS === 'android') {
+    return 'https://play.google.com/store/account/subscriptions';
+  }
+
+  return null;
+}
+
+function getSubscriptionManagementLabel() {
+  if (Platform.OS === 'ios') {
+    return 'App Store Aboneliklerini Aç';
+  }
+
+  if (Platform.OS === 'android') {
+    return 'Google Play Aboneliklerini Aç';
+  }
+
+  return 'Mağaza Aboneliklerini Aç';
 }
 
 function getPricingLoadErrorMessage(subscriptionFailed: boolean, billingFailed: boolean) {
@@ -289,6 +315,33 @@ export default function PricingScreen() {
     } finally {
       setLoading(null);
     }
+  };
+
+  const handleOpenSubscriptionManagement = async () => {
+    const url = getSubscriptionManagementUrl();
+
+    if (!url) {
+      setFeedback({
+        type: 'error',
+        title: 'Bu cihazda kullanılamıyor',
+        message: 'Abonelik yönetimi bağlantısı yalnızca App Store veya Google Play üzerinden açılabilir.',
+      });
+      return;
+    }
+
+    const supported = await Linking.canOpenURL(url);
+
+    if (!supported) {
+      setFeedback({
+        type: 'error',
+        title: 'Mağaza açılamadı',
+        message: 'Abonelik ayarları açılamadı. Lütfen App Store veya Google Play hesabınızdan manuel olarak kontrol edin.',
+      });
+      return;
+    }
+
+    trackEvent('subscription_management_opened', { platform: Platform.OS });
+    await Linking.openURL(url);
   };
 
   const getPlanActionLabel = (
@@ -597,6 +650,12 @@ export default function PricingScreen() {
             <Text style={[styles.manageStep, { color: colors.textSecondary }]}>2. Mevcut satın alımınız görünmüyorsa önce “Satın Alımları Geri Yükle” seçeneğini kullanın.</Text>
             <Text style={[styles.manageStep, { color: colors.textSecondary }]}>3. Paket değişikliği sonrası bilgiler güncellenmediyse “Bilgileri Yenile” ile mağaza durumunu tekrar çekin.</Text>
           </View>
+          <Button
+            title={getSubscriptionManagementLabel()}
+            onPress={handleOpenSubscriptionManagement}
+            variant="secondary"
+            fullWidth
+          />
           <Text style={[styles.manageHelper, { color: colors.textMuted }]}>İptal ve yenileme ayarları Apple App Store veya Google Play hesabınızdan yönetilir.</Text>
           <Text style={[styles.manageHelper, { color: colors.textMuted }]}>Sorun yaşarsanız önce geri yükleme ve yenileme adımlarını deneyin, sonra destek ekibiyle paylaşın.</Text>
         </GlassCard>
