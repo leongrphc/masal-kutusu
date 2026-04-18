@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -43,6 +43,8 @@ interface DashboardNotice {
   tone: 'error' | 'warning' | 'info';
   message: string;
 }
+
+type TransactionFilter = 'all' | 'purchase' | 'usage' | 'refund' | 'bonus';
 
 function getDashboardErrorMessage(error: unknown) {
   if (error instanceof TypeError) {
@@ -197,6 +199,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<DashboardNotice | null>(null);
+  const [transactionFilter, setTransactionFilter] = useState<TransactionFilter>('all');
 
   const loadDashboardData = useCallback(async ({ refreshing: isRefreshing = false } = {}) => {
     try {
@@ -294,6 +297,19 @@ export default function DashboardScreen() {
   const latestTransactionLabel = transactions[0]
     ? new Date(transactions[0].created_at).toLocaleDateString('tr-TR')
     : 'Henüz yok';
+  const filterChips = [
+    { key: 'all' as const, label: 'Tümü', count: transactions.length },
+    { key: 'purchase' as const, label: 'Satın Alma', count: transactions.filter((transaction) => transaction.type === 'purchase').length },
+    { key: 'usage' as const, label: 'Kullanım', count: transactions.filter((transaction) => transaction.type === 'usage').length },
+    { key: 'refund' as const, label: 'İade', count: transactions.filter((transaction) => transaction.type === 'refund').length },
+    { key: 'bonus' as const, label: 'Bonus', count: transactions.filter((transaction) => transaction.type === 'bonus').length },
+  ];
+  const filteredTransactions = useMemo(
+    () => transactionFilter === 'all'
+      ? transactions
+      : transactions.filter((transaction) => transaction.type === transactionFilter),
+    [transactionFilter, transactions],
+  );
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Süresiz';
@@ -531,10 +547,47 @@ export default function DashboardScreen() {
         <GlassCard>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>İşlem Geçmişi</Text>
           <Text style={[styles.transactionIntro, { color: colors.textSecondary }]}>Kredi kullanımı, satın alma, bonus ve iade hareketleri burada açıklamalarıyla birlikte görünür.</Text>
-          {transactions.length === 0 ? (
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{getEmptyTransactionMessage(subscription)}</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterRow}
+            contentContainerStyle={styles.filterRowContent}
+          >
+            {filterChips.map((chip) => (
+              <TouchableOpacity
+                key={chip.key}
+                onPress={() => setTransactionFilter(chip.key)}
+                accessibilityRole="button"
+                accessibilityLabel={`${chip.label} işlemlerini göster, ${chip.count} adet`}
+                accessibilityState={{ selected: transactionFilter === chip.key }}
+                style={[
+                  styles.filterChip,
+                  transactionFilter === chip.key && styles.filterChipActive,
+                  {
+                    backgroundColor: transactionFilter === chip.key ? Colors.primary[500] : colors.surface,
+                    borderColor: transactionFilter === chip.key ? Colors.primary[600] : colors.inputBorder,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    { color: transactionFilter === chip.key ? Colors.white : colors.textSecondary },
+                  ]}
+                >
+                  {chip.label} {chip.count > 0 ? `(${chip.count})` : ''}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          {filteredTransactions.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              {transactionFilter === 'all'
+                ? getEmptyTransactionMessage(subscription)
+                : `${filterChips.find((chip) => chip.key === transactionFilter)?.label} türünde işlem bulunamadı.`}
+            </Text>
           ) : (
-            transactions.map((t) => {
+            filteredTransactions.map((t) => {
               const typeColor = getTypeColor(t.type);
               return (
                 <View key={t.id} style={[styles.transactionRow, { borderBottomColor: colors.surfaceBorder }]}>
@@ -678,6 +731,16 @@ const styles = StyleSheet.create({
   actionSub: { fontSize: 12 },
 
   transactionIntro: { fontSize: 13, lineHeight: 20, marginBottom: 12 },
+  filterRow: { marginHorizontal: -16, marginBottom: 16 },
+  filterRowContent: { gap: 8, paddingHorizontal: 16, paddingRight: 24 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  filterChipActive: {},
+  filterChipText: { fontSize: 13, fontWeight: '600' },
   emptyText: { textAlign: 'center', paddingVertical: 24, fontSize: 14 },
   transactionRow: {
     flexDirection: 'row',
