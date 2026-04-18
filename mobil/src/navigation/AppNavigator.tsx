@@ -17,6 +17,14 @@ import { Colors, BorderRadius } from '../constants/theme';
 import { Sparkles, Clock3, UserRound } from 'lucide-react-native';
 import { TabBarIcon } from '../components/TabBarIcon';
 
+function modeAwareActiveColor(textColor: string, accentColor: string) {
+  return textColor === Colors.neutral[100] ? Colors.white : accentColor;
+}
+
+function modeAwareInactiveColor(textSecondary: string) {
+  return textSecondary === Colors.neutral[400] ? Colors.neutral[200] : textSecondary;
+}
+
 function renderTabLabel(label: string, color: string, focused: boolean) {
   return (
     <Text
@@ -77,8 +85,8 @@ function AuthenticatedTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary[500],
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: modeAwareActiveColor(colors.text, Colors.primary[500]),
+        tabBarInactiveTintColor: modeAwareInactiveColor(colors.textSecondary),
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.surfaceBorder,
