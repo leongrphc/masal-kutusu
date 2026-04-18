@@ -20,6 +20,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import {
   getStoryHistory,
   removeStoryFromHistory,
+  toggleFavoriteStory,
   StoryHistoryEntry,
 } from '../lib/storyHistory';
 
@@ -56,6 +57,15 @@ export default function StoryHistoryScreen() {
       loadHistory();
     }, [loadHistory])
   );
+
+  const handleToggleFavorite = async (story: StoryHistoryEntry) => {
+    if (!user) {
+      return;
+    }
+
+    const nextHistory = await toggleFavoriteStory(user.id, story.id);
+    setHistory(nextHistory);
+  };
 
   const handleDeleteStory = (story: StoryHistoryEntry) => {
     Alert.alert('Masalı sil', 'Bu masalı cihaz geçmişinden kaldırmak istiyor musunuz?', [
@@ -123,8 +133,15 @@ export default function StoryHistoryScreen() {
                         {new Date(story.createdAt).toLocaleDateString('tr-TR')} · {story.storyLength} karakter
                       </Text>
                     </View>
-                    <View style={[styles.themeBadge, { backgroundColor: 'rgba(255,127,80,0.12)' }]}>
-                      <Text style={styles.themeBadgeText}>{THEME_LABELS[story.theme]}</Text>
+                    <View style={styles.headerBadges}>
+                      {story.isFavorite ? (
+                        <View style={styles.favoriteBadge}>
+                          <Text style={styles.favoriteBadgeText}>★ Favori</Text>
+                        </View>
+                      ) : null}
+                      <View style={[styles.themeBadge, { backgroundColor: 'rgba(255,127,80,0.12)' }]}>
+                        <Text style={styles.themeBadgeText}>{THEME_LABELS[story.theme]}</Text>
+                      </View>
                     </View>
                   </View>
 
@@ -149,6 +166,20 @@ export default function StoryHistoryScreen() {
                       <Text style={[styles.actionButtonText, { color: colors.text }]}>{isExpanded ? 'Daha Az Göster' : 'Tamamını Oku'}</Text>
                     </TouchableOpacity>
 
+                    <TouchableOpacity
+                      onPress={() => handleToggleFavorite(story)}
+                      style={[
+                        styles.actionButton,
+                        story.isFavorite ? styles.favoriteActionButton : { borderColor: colors.inputBorder, backgroundColor: colors.surface },
+                      ]}
+                    >
+                      <Text style={[styles.actionButtonText, story.isFavorite ? styles.favoriteActionButtonText : { color: colors.text }]}>
+                        {story.isFavorite ? 'Favoriden Çıkar' : 'Favorile'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.actionRow}>
                     <TouchableOpacity
                       onPress={() => navigation.navigate('CreateStory', {
                         topic: story.topic,
@@ -246,6 +277,21 @@ const styles = StyleSheet.create({
   storyMeta: {
     fontSize: 12,
   },
+  headerBadges: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  favoriteBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(245,158,11,0.14)',
+  },
+  favoriteBadgeText: {
+    color: '#B45309',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   themeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -280,9 +326,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
   },
+  favoriteActionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderColor: 'rgba(245,158,11,0.24)',
+  },
   actionButtonText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  favoriteActionButtonText: {
+    color: '#B45309',
   },
   deleteButton: {
     backgroundColor: 'rgba(239,68,68,0.12)',
