@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Colors, BorderRadius } from '../constants/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlassCard } from './GlassCard';
+import { Button } from './Button';
+import * as FileSystem from 'expo-file-system/legacy';
 import { File, Paths } from 'expo-file-system/next';
 
 interface AudioPlayerProps {
@@ -20,15 +22,6 @@ interface AudioPlayerProps {
 
 const SPEED_OPTIONS = [0.9, 1.0, 1.1] as const;
 const SEEK_SECONDS = 10;
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
 
 function getAudioExtension(mimeType: string) {
   if (mimeType.includes('mpeg')) {
@@ -42,9 +35,22 @@ function getAudioExtension(mimeType: string) {
   return 'audio';
 }
 
+function getAudioErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Ses oynatıcı hazırlanamadı.';
+}
+
+function createAudioFileName(mimeType: string) {
+  return `masal_audio_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${getAudioExtension(mimeType)}`;
+}
+
 export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
   const { colors } = useTheme();
   const soundRef = useRef<Audio.Sound | null>(null);
+  const audioFileRef = useRef<File | null>(null);
   const pulseAnims = useRef(Array.from({ length: 20 }, () => new Animated.Value(0.2))).current;
   const [isReady, setIsReady] = useState(false);
   const [isPreparing, setIsPreparing] = useState(true);
@@ -53,76 +59,127 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [prepareAttempt, setPrepareAttempt] = useState(0);
+
+  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
+    if (!status.isLoaded) {
+      if (status.error) {
+        setAudioError('Ses oynatma sırasında bir hata oluştu.');
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    setCurrentTime(status.positionMillis / 1000);
+    setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
+    setIsPlaying(status.isPlaying);
+
+    if (status.didJustFinish) {
+      setIsPlaying(false);
+    }
+  }, []);
+
+  const cleanupAudioResources = useCallback(async () => {
+    const currentSound = soundRef.current;
+    soundRef.current = null;
+
+    if (currentSound) {
+      await currentSound.unloadAsync().catch(() => undefined);
+    }
+
+    const currentFile = audioFileRef.current;
+    audioFileRef.current = null;
+
+    if (currentFile) {
+      try {
+        currentFile.delete();
+      } catch (error) {
+        console.warn('Audio temp file silinemedi:', error);
+      }
+    }
+  }, []);
+
+  const prepareAudio = useCallback(async (isMounted: () => boolean) => {
+    setIsPreparing(true);
+    setAudioError(null);
+    setIsReady(false);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+
+    try {
+      if (!audioBase64.trim()) {
+        throw new Error('Ses verisi bulunamadı.');
+      }
+
+      if (!mimeType.trim()) {
+        throw new Error('Ses formatı bulunamadı.');
+      }
+
+      await cleanupAudioResources();
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+      });
+
+      const audioFile = new File(Paths.cache, createAudioFileName(mimeType));
+      audioFileRef.current = audioFile;
+      await FileSystem.writeAsStringAsync(audioFile.uri, audioBase64, {
+        encoding: 'base64',
+      });
+
+      const { sound: newSound, status } = await Audio.Sound.createAsync(
+        { uri: audioFile.uri },
+        {
+          shouldPlay: false,
+          progressUpdateIntervalMillis: 250,
+        },
+        onPlaybackStatusUpdate,
+      );
+
+      if (!isMounted()) {
+        await newSound.unloadAsync().catch(() => undefined);
+        if (audioFileRef.current === audioFile) {
+          try {
+            audioFile.delete();
+          } catch (error) {
+            console.warn('Audio temp file silinemedi:', error);
+          }
+          audioFileRef.current = null;
+        }
+        return;
+      }
+
+      soundRef.current = newSound;
+      setIsReady(true);
+
+      if (status.isLoaded) {
+        setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
+      }
+    } catch (error) {
+      console.error('Audio yükleme hatası:', error);
+      if (isMounted()) {
+        setAudioError(getAudioErrorMessage(error));
+      }
+    } finally {
+      if (isMounted()) {
+        setIsPreparing(false);
+      }
+    }
+  }, [audioBase64, cleanupAudioResources, mimeType, onPlaybackStatusUpdate]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const prepareAudio = async () => {
-      setIsPreparing(true);
-      setAudioError(null);
-      setIsReady(false);
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
-
-      try {
-        if (soundRef.current) {
-          await soundRef.current.unloadAsync();
-          soundRef.current = null;
-        }
-
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: true,
-        });
-
-        const audioFile = new File(Paths.cache, `masal_audio.${getAudioExtension(mimeType)}`);
-        audioFile.write(base64ToUint8Array(audioBase64));
-
-        const { sound: newSound, status } = await Audio.Sound.createAsync(
-          { uri: audioFile.uri },
-          {
-            shouldPlay: false,
-            progressUpdateIntervalMillis: 250,
-          },
-          onPlaybackStatusUpdate,
-        );
-
-        if (!isMounted) {
-          await newSound.unloadAsync();
-          return;
-        }
-
-        soundRef.current = newSound;
-        setIsReady(true);
-
-        if (status.isLoaded) {
-          setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
-        }
-      } catch (error) {
-        console.error('Audio yükleme hatası:', error);
-        if (isMounted) {
-          setAudioError('Ses oynatıcı hazırlanamadı.');
-        }
-      } finally {
-        if (isMounted) {
-          setIsPreparing(false);
-        }
-      }
-    };
-
-    void prepareAudio();
+    void prepareAudio(() => isMounted);
 
     return () => {
       isMounted = false;
-      const currentSound = soundRef.current;
-      soundRef.current = null;
-      if (currentSound) {
-        void currentSound.unloadAsync();
-      }
+      void cleanupAudioResources();
     };
-  }, [audioBase64, mimeType]);
+  }, [cleanupAudioResources, prepareAudio, prepareAttempt]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -162,20 +219,6 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
         useNativeDriver: false,
       }).start();
     });
-  };
-
-  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (!status.isLoaded) {
-      return;
-    }
-
-    setCurrentTime(status.positionMillis / 1000);
-    setDuration(status.durationMillis ? status.durationMillis / 1000 : 0);
-    setIsPlaying(status.isPlaying);
-
-    if (status.didJustFinish) {
-      setIsPlaying(false);
-    }
   };
 
   const togglePlay = async () => {
@@ -225,6 +268,10 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
 
     await sound.setRateAsync(rate, true);
     setPlaybackRate(rate);
+  };
+
+  const handleRetry = () => {
+    setPrepareAttempt((current) => current + 1);
   };
 
   const formatTime = (time: number) => {
@@ -281,7 +328,16 @@ export function AudioPlayer({ audioBase64, mimeType }: AudioPlayerProps) {
       </View>
 
       {audioError ? (
-        <Text style={[styles.statusText, styles.errorText]}>{audioError}</Text>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.statusText, styles.errorText]}>{audioError}</Text>
+          <Button
+            title="Sesi Yeniden Hazırla"
+            onPress={handleRetry}
+            variant="secondary"
+            loading={isPreparing}
+            style={styles.retryButton}
+          />
+        </View>
       ) : isPreparing ? (
         <Text style={[styles.statusText, { color: colors.textMuted }]}>Ses hazırlanıyor...</Text>
       ) : (
@@ -465,9 +521,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
+  errorContainer: {
+    alignItems: 'center',
+    gap: 10,
+  },
   errorText: {
     color: Colors.error,
     fontWeight: '600',
+  },
+  retryButton: {
+    alignSelf: 'center',
   },
   seekControls: {
     flexDirection: 'row',
