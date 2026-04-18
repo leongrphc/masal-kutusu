@@ -35,6 +35,22 @@ interface Subscription {
   credits_total: number;
 }
 
+function getGenerationStatusMessage(result: StoryResult | null, loading: boolean) {
+  if (!loading) {
+    return null;
+  }
+
+  if (result?.audioBase64) {
+    return 'Ses hazırlanıyor...';
+  }
+
+  if (result?.story) {
+    return 'Masal tamamlandı, ses ekleniyor...';
+  }
+
+  return 'Masal kurgulanıyor...';
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { user, session } = useAuth();
@@ -53,7 +69,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StoryResult | null>(null);
+  const [generationStatus, setGenerationStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const creditsRemaining = subscription?.credits_remaining ?? 0;
+  const willUseCredit = Boolean(user && session && topic.trim());
+  const generationHint = getGenerationStatusMessage(result, loading) ?? generationStatus;
 
   useEffect(() => {
     const fetchSubscription = async () => {
@@ -94,6 +115,7 @@ export default function HomeScreen() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setGenerationStatus('Masal kurgulanıyor...');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/generate`, {
@@ -109,12 +131,16 @@ export default function HomeScreen() {
 
       if (!response.ok) {
         if (data.needsUpgrade) {
+          setGenerationStatus(null);
           setShowUpgradeModal(true);
+          return;
         }
         throw new Error(data.error || 'Bir hata oluştu');
       }
 
+      setGenerationStatus('Masal tamamlandı, ses ekleniyor...');
       setResult(data);
+      setGenerationStatus('Masalınız hazır. Sesli anlatımı başlatabilirsiniz.');
       void saveStoryToHistory(user.id, {
         topic: topic.trim(),
         story: data.story,
@@ -123,6 +149,10 @@ export default function HomeScreen() {
         ageRange,
         length,
         theme,
+      }).then((savedEntry) => {
+        if (!savedEntry.audioBase64 && data.audioBase64) {
+          console.warn('Story history audio omitted to keep local storage lighter.');
+        }
       }).catch((historyError) => {
         console.error('Story history save error:', historyError);
       });
@@ -136,6 +166,7 @@ export default function HomeScreen() {
         setSubscription(subData.subscription);
       }
     } catch (err: any) {
+      setGenerationStatus(null);
       setError(err.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
@@ -371,15 +402,33 @@ export default function HomeScreen() {
             </View>
           )}
 
+          {user && subscription ? (
+            <View style={styles.creditHintBox}>
+              <Text style={[styles.creditHintTitle, { color: colors.text }]}>Bu işlem 1 kredi kullanır</Text>
+              <Text style={[styles.creditHintText, { color: colors.textSecondary }]}>Şu an hesabınızda {creditsRemaining} kredi var. Masal oluşturulduktan sonra kalan kredi bilginiz otomatik güncellenecek.</Text>
+            </View>
+          ) : null}
+
           {/* Generate Button */}
           <Button
-            title={loading ? 'Masal Oluşturuluyor... (30-40 sn)' : 'Masalı Oluştur ve Seslendir ▶️'}
+            title={loading ? 'Masal Oluşturuluyor...' : 'Masalı Oluştur ve Seslendir ▶️'}
             onPress={handleGenerate}
             loading={loading}
             disabled={!topic.trim()}
             fullWidth
             style={{ marginTop: 16 }}
           />
+
+          {generationHint ? (
+            <View style={styles.progressBox}>
+              <ActivityIndicator size="small" color={Colors.primary[500]} />
+              <Text style={[styles.progressText, { color: colors.textSecondary }]}>{generationHint}</Text>
+            </View>
+          ) : null}
+
+          {!user && willUseCredit ? (
+            <Text style={[styles.preAuthHint, { color: colors.textMuted }]}>Masal üretmek için giriş yaptığınızda kredi kullanımı ve kalan hakkınız burada görünür.</Text>
+          ) : null}
 
           {/* Error */}
           {error && (
@@ -561,6 +610,25 @@ const styles = StyleSheet.create({
 
   inputCard: { gap: 8 },
   fieldLabel: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
+  creditHintBox: {
+    backgroundColor: 'rgba(255,127,80,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,127,80,0.18)',
+    borderRadius: BorderRadius.md,
+    padding: 12,
+    marginTop: 16,
+    gap: 4,
+  },
+  creditHintTitle: { fontSize: 13, fontWeight: '700' },
+  creditHintText: { fontSize: 12, lineHeight: 18 },
+  progressBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 12,
+  },
+  progressText: { fontSize: 13, lineHeight: 18, flex: 1 },
+  preAuthHint: { fontSize: 12, lineHeight: 18, marginTop: 10 },
   input: {
     borderWidth: 2,
     borderRadius: BorderRadius.lg,
