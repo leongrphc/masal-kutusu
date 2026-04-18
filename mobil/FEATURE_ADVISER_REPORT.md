@@ -54,7 +54,7 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 
 ### Açık kalan yüksek değerli dilimler
 - [x] Satın alma sonrası self-service üyelik yardım katmanı ekle
-- [ ] Üretim ve satın alma olaylarını ölçümle
+- [x] Üretim ve satın alma olaylarını ölçümle
 - [ ] Transaction geçmişini daha açıklayıcı ve aksiyon odaklı hale getir
 - [ ] Home / Pricing / Dashboard üzerinde kalan küçük polish ve tutarlılık işleri
 
@@ -69,7 +69,7 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 | [x] | P1 | Dashboard durum modelini loading/empty/error olarak ayrıştır | Kısmi backend hatalarında boş veri ile hata durumu birbirine karışabiliyordu; billing güvenini zedeliyordu | 0.5-1 gün | `src/screens/DashboardScreen.tsx` |
 | [x] | P1 | Story history’yi favori/yeniden açma senaryolarıyla ürünleştir | Üretilen içerik kalıcı değere dönüşür; retention ve ücretli pakete geçiş için güçlü kaldıraç sağlar | 1-2 gün | `src/lib/storyHistory.ts`, History ekranı |
 | [x] | P2 | Subscription/billing istemci mantığını merkezileştir | Home, Pricing ve Dashboard içinde tekrar eden abonelik/billing fetch desenleri bakım maliyeti ve durum drift’i yaratıyordu | 1-2 gün | ekranlar + servis katmanı |
-| [ ] | P2 | Üretim ve satın alma olaylarını ölçümle | `console.error` ötesinde ürün kararlarını besleyecek event’ler yok; drop-off ve hata nedenleri ölçülemiyor | 0.5-1 gün | Home, Pricing, Audio |
+| [x] | P2 | Üretim ve satın alma olaylarını ölçümle | Generate, upgrade modal, purchase ve restore için temel event noktaları eklendi; drop-off ve sonuç görünürlüğü artık izlenebilir hale geldi | 0.5-1 gün | `src/lib/analytics.ts`, Home, Pricing |
 | [ ] | P2 | İşlem geçmişini açıklayıcı ve aksiyon odaklı hale getir | Transaction listesi pasif kayıt gibi kalıyor; neden kredi düştü/yenilendi gibi sorular açık değil | 0.5-1 gün | `src/screens/DashboardScreen.tsx` |
 | [x] | P3 | HomeScreen ebeveyn güven dilini rafine et | Görsel dil sıcak ama fazla dekoratif kalabiliyordu; daha somut güven sinyalleri kayıt ve satın alma kararını güçlendiriyordu | 0.5 gün | `src/screens/HomeScreen.tsx` |
 
@@ -81,11 +81,11 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 - **Risk:** Bazı kullanıcılar yine de destek kanalına ihtiyaç duyabilir.
 - **Öneri:** İleride doğrudan store yönetimi yönlendirmesi veya daha zengin yardım akışı eklenebilir.
 
-### 2. Ürün ölçümleme eksikliği
-- **Seviye:** Orta
-- **Durum:** Kritik üretim ve satın alma akışları hâlâ çoğunlukla lokal log seviyesinde izleniyor.
-- **Risk:** Drop-off nedenleri ve dönüşüm darboğazları kör kalır.
-- **Öneri:** Generate start/success/fail, upgrade modal open, purchase result, restore result gibi event’ler eklenmeli.
+### 2. Ölçümleme temeli kuruldu, derinleşme alanı açık
+- **Seviye:** Düşük-Orta
+- **Durum:** Generate, upgrade modal, purchase ve restore için temel event noktaları eklendi.
+- **Risk:** Şu an yalnız temel görünürlük var; ileride daha ayrıntılı funnel ve hata payload’ları gerekebilir.
+- **Öneri:** Sonraki adımda event’leri backend veya izleme aracına bağlayıp dashboardlaştırmak.
 
 ### 3. Transaction açıklamaları sınırlı
 - **Seviye:** Orta
