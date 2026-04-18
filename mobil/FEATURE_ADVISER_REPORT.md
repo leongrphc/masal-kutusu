@@ -53,7 +53,7 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 - [x] HomeScreen hata akışı sakinleştirildi, otomatik login redirect kaldırıldı (`src/screens/HomeScreen.tsx`)
 
 ### Açık kalan yüksek değerli dilimler
-- [ ] Satın alma sonrası self-service üyelik yönetimi ekle
+- [x] Satın alma sonrası self-service üyelik yardım katmanı ekle
 - [ ] Üretim ve satın alma olaylarını ölçümle
 - [ ] Transaction geçmişini daha açıklayıcı ve aksiyon odaklı hale getir
 - [ ] Home / Pricing / Dashboard üzerinde kalan küçük polish ve tutarlılık işleri
@@ -64,7 +64,7 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 |---|---|---|---|---|---|
 | [x] | P0 | Audio temp file güvenliğini düzelt | `AudioPlayer` sabit isimli cache dosyası kullanıyordu; art arda üretimlerde yanlış ses, bozuk oynatma veya format uyuşmazlığı riski doğuruyordu | 2-4 saat | `src/components/AudioPlayer.tsx` |
 | [x] | P0 | HomeScreen üretim sürecine aşamalı durum göstergesi ekle | 30-40 saniyelik bekleme sırasında kullanıcı ne olduğunu göremiyordu; AI deneyimi yavaş ve güvensiz hissediliyordu | 3-5 saat | `src/screens/HomeScreen.tsx` |
-| [ ] | P1 | Satın alma sonrası self-service üyelik yönetimi ekle | Satın alım sonrası kullanıcıya paket yönetme, iptal yönlendirmesi, yenileme mantığı ve destek yolu sunulmazsa churn ve destek yükü artar | 1-2 gün | Pricing + Dashboard |
+| [x] | P1 | Satın alma sonrası self-service üyelik yardım katmanı ekle | Satın alım sonrası kullanıcıya paket yönetme, iptal yönlendirmesi, yenileme ve restore adımlarını görünür anlatmak güveni artırır ve destek yükünü azaltır | 0.5 gün | `src/screens/PricingScreen.tsx` |
 | [x] | P1 | Pricing CTA çevresine güven mikro kopyası ekle | Ebeveyn için “ne zaman ücret çekilir, nasıl yenilenir, nasıl iptal edilir” bilgisi CTA anında görünür değildi; dönüşümü düşürüyordu | 0.5-1 gün | `src/screens/PricingScreen.tsx` |
 | [x] | P1 | Dashboard durum modelini loading/empty/error olarak ayrıştır | Kısmi backend hatalarında boş veri ile hata durumu birbirine karışabiliyordu; billing güvenini zedeliyordu | 0.5-1 gün | `src/screens/DashboardScreen.tsx` |
 | [x] | P1 | Story history’yi favori/yeniden açma senaryolarıyla ürünleştir | Üretilen içerik kalıcı değere dönüşür; retention ve ücretli pakete geçiş için güçlü kaldıraç sağlar | 1-2 gün | `src/lib/storyHistory.ts`, History ekranı |
@@ -75,11 +75,11 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 
 ## En Önemli Riskler
 
-### 1. Satın alma sonrası self-service eksikliği
-- **Seviye:** Orta-Yüksek
-- **Durum:** Billing altyapısı güçlü ama kullanıcı tarafında paket yönetme/iptal yönlendirme gibi self-service alanı hâlâ sınırlı.
-- **Risk:** Destek yükü ve kullanıcı güvensizliği artabilir.
-- **Öneri:** Dashboard veya Pricing üzerinden mağaza yönetimi ve destek akışı görünür hale getirilmeli.
+### 1. Satın alma sonrası tam self-service yönetim eksikliği
+- **Seviye:** Orta
+- **Durum:** Pricing üzerinde temel self-service yardım katmanı artık görünür; ancak mağaza yönetimine doğrudan yönlendirme ve daha derin üyelik yönetimi akışı henüz yok.
+- **Risk:** Bazı kullanıcılar yine de destek kanalına ihtiyaç duyabilir.
+- **Öneri:** İleride doğrudan store yönetimi yönlendirmesi veya daha zengin yardım akışı eklenebilir.
 
 ### 2. Ürün ölçümleme eksikliği
 - **Seviye:** Orta
