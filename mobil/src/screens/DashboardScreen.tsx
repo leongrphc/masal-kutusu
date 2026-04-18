@@ -98,6 +98,40 @@ function getEmptyTransactionMessage(subscription: UserSubscription | null) {
   return 'Henüz işlem geçmişiniz bulunmuyor. İlk kullanım veya satın alma sonrasında burada görünecek.';
 }
 
+function getTransactionDescription(transaction: Transaction) {
+  if (transaction.description?.trim()) {
+    return transaction.description;
+  }
+
+  switch (transaction.type) {
+    case 'purchase':
+      return 'Paket satın alma işlemi hesabınıza yansıtıldı.';
+    case 'usage':
+      return 'Bir masal üretimi için kredi kullanıldı.';
+    case 'refund':
+      return 'Bir işlem için kredi veya ödeme iadesi uygulandı.';
+    case 'bonus':
+      return 'Hesabınıza ek kredi tanımlandı.';
+    default:
+      return 'Hesabınızda bir hareket gerçekleşti.';
+  }
+}
+
+function getTransactionHelperText(transaction: Transaction) {
+  switch (transaction.type) {
+    case 'purchase':
+      return 'Yeni paketiniz ve kredi limitiniz bu işlemden sonra güncellendi.';
+    case 'usage':
+      return 'Bu hareket bir masal oluşturma isteğiniz sonrası gerçekleşir.';
+    case 'refund':
+      return 'İade veya düzeltme hareketleri kredi durumunuza tekrar yansır.';
+    case 'bonus':
+      return 'Bonus hareketleri kampanya veya destek tanımlamaları sonrası görünür.';
+    default:
+      return 'Detaylar için destek ekibine başvurabilirsiniz.';
+  }
+}
+
 function getUpgradePrompt(subscription: UserSubscription | null) {
   if (!subscription) {
     return 'Paket seçeneklerini görmek için fiyatlandırma ekranını açın.';
@@ -505,7 +539,8 @@ export default function DashboardScreen() {
               return (
                 <View key={t.id} style={[styles.transactionRow, { borderBottomColor: colors.surfaceBorder }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.transDesc, { color: colors.text }]}>{t.description}</Text>
+                    <Text style={[styles.transDesc, { color: colors.text }]}>{getTransactionDescription(t)}</Text>
+                    <Text style={[styles.transHelper, { color: colors.textSecondary }]}>{getTransactionHelperText(t)}</Text>
                     <View style={styles.transMetaRow}>
                       <Text style={[styles.transDate, { color: colors.textMuted }]}>
                         {new Date(t.created_at).toLocaleDateString('tr-TR')}
@@ -641,6 +676,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   transDesc: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
+  transHelper: { fontSize: 12, lineHeight: 18, marginBottom: 6 },
   transMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   transDate: { fontSize: 12 },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: BorderRadius.full },
