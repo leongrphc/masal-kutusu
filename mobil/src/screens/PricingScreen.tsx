@@ -38,7 +38,70 @@ interface Subscription {
 
 interface FeedbackState {
   type: 'error' | 'info';
+  title: string;
   message: string;
+}
+
+function getBillingFeedback(result: { status: 'blocked' | 'cancelled' | 'started' | 'error'; message: string }): FeedbackState {
+  switch (result.status) {
+    case 'started':
+      return {
+        type: 'info',
+        title: 'Üyelik güncellendi',
+        message: result.message,
+      };
+    case 'cancelled':
+      return {
+        type: 'info',
+        title: 'İşlem iptal edildi',
+        message: result.message,
+      };
+    case 'blocked':
+      return {
+        type: 'error',
+        title: 'Satın alma şu anda tamamlanamıyor',
+        message: result.message,
+      };
+    default:
+      return {
+        type: 'error',
+        title: 'Bir sorun oluştu',
+        message: result.message,
+      };
+  }
+}
+
+function getFeedbackCardStyle(type: FeedbackState['type']) {
+  return type === 'error'
+    ? {
+        backgroundColor: 'rgba(239,68,68,0.1)',
+        borderColor: 'rgba(239,68,68,0.3)',
+        titleColor: '#B91C1C',
+        textColor: '#DC2626',
+      }
+    : {
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        borderColor: 'rgba(59,130,246,0.25)',
+        titleColor: '#1D4ED8',
+        textColor: '#1D4ED8',
+      };
+}
+
+function getPlanSuccessLabel(planId: PaidSubscriptionPlanId) {
+  switch (planId) {
+    case 'basic':
+      return 'Temel paketiniz aktif edildi.';
+    case 'premium':
+      return 'Premium paketiniz aktif edildi.';
+    case 'unlimited':
+      return 'Sınırsız paketiniz aktif edildi.';
+    default:
+      return 'Üyeliğiniz güncellendi.';
+  }
+}
+
+function getRestoreSuccessLabel() {
+  return 'Store satın alımlarınız hesabınıza yeniden uygulandı.';
 }
 
 function getPricingLoadErrorMessage(subscriptionFailed: boolean, billingFailed: boolean) {
@@ -176,10 +239,15 @@ export default function PricingScreen() {
 
     try {
       const result = await startPlanPurchase(planId);
-      setFeedback({
-        type: result.status === 'started' || result.status === 'cancelled' ? 'info' : 'error',
-        message: result.message,
-      });
+      setFeedback(
+        result.status === 'started'
+          ? {
+              type: 'info',
+              title: getPlanSuccessLabel(planId),
+              message: result.message,
+            }
+          : getBillingFeedback(result),
+      );
 
       await refreshScreenData(true);
 
@@ -202,10 +270,15 @@ export default function PricingScreen() {
 
     try {
       const result = await restoreBillingPurchases();
-      setFeedback({
-        type: result.status === 'started' || result.status === 'cancelled' ? 'info' : 'error',
-        message: result.message,
-      });
+      setFeedback(
+        result.status === 'started'
+          ? {
+              type: 'info',
+              title: getRestoreSuccessLabel(),
+              message: result.message,
+            }
+          : getBillingFeedback(result),
+      );
 
       await refreshScreenData(true);
     } finally {
@@ -353,23 +426,24 @@ export default function PricingScreen() {
           )}
         </GlassCard>
 
-        {feedback ? (
-          <View
-            style={[
-              styles.feedbackBox,
-              feedback.type === 'error' ? styles.errorBox : styles.infoBox,
-            ]}
-          >
-            <Text
+        {feedback ? (() => {
+          const feedbackStyle = getFeedbackCardStyle(feedback.type);
+
+          return (
+            <View
               style={[
-                styles.feedbackText,
-                { color: feedback.type === 'error' ? '#DC2626' : '#1D4ED8' },
+                styles.feedbackBox,
+                {
+                  backgroundColor: feedbackStyle.backgroundColor,
+                  borderColor: feedbackStyle.borderColor,
+                },
               ]}
             >
-              {feedback.message}
-            </Text>
-          </View>
-        ) : null}
+              <Text style={[styles.feedbackTitle, { color: feedbackStyle.titleColor }]}>{feedback.title}</Text>
+              <Text style={[styles.feedbackText, { color: feedbackStyle.textColor }]}>{feedback.message}</Text>
+            </View>
+          );
+        })() : null}
 
         {Object.entries(SUBSCRIPTION_PLANS).map(([id, plan]) => {
           const planId = id as SubscriptionPlanId;
@@ -565,16 +639,10 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: 12,
     marginBottom: 16,
+    gap: 6,
   },
-  errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderColor: 'rgba(239,68,68,0.3)',
-  },
-  infoBox: {
-    backgroundColor: 'rgba(59,130,246,0.1)',
-    borderColor: 'rgba(59,130,246,0.25)',
-  },
-  feedbackText: { fontSize: 13, fontWeight: '600' },
+  feedbackTitle: { fontSize: 14, fontWeight: '700' },
+  feedbackText: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
 
   pricingCard: {
     marginBottom: 16,
