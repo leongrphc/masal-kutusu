@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +31,8 @@ const THEME_LABELS: Record<StoryHistoryEntry['theme'], string> = {
   emotions: 'Duygular',
 };
 
+type HistoryFilter = 'all' | 'favorites' | 'audio';
+
 export default function StoryHistoryScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
@@ -38,6 +40,7 @@ export default function StoryHistoryScreen() {
   const [history, setHistory] = useState<StoryHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedStoryId, setExpandedStoryId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<HistoryFilter>('all');
 
   const loadHistory = useCallback(async () => {
     if (!user) {
@@ -66,6 +69,21 @@ export default function StoryHistoryScreen() {
     const nextHistory = await toggleFavoriteStory(user.id, story.id);
     setHistory(nextHistory);
   };
+
+  const favoriteCount = history.filter((story) => story.isFavorite).length;
+  const audioCount = history.filter((story) => Boolean(story.audioBase64 && story.mimeType)).length;
+
+  const filteredHistory = useMemo(() => {
+    if (activeFilter === 'favorites') {
+      return history.filter((story) => story.isFavorite);
+    }
+
+    if (activeFilter === 'audio') {
+      return history.filter((story) => Boolean(story.audioBase64 && story.mimeType));
+    }
+
+    return history;
+  }, [activeFilter, history]);
 
   const handleDeleteStory = (story: StoryHistoryEntry) => {
     Alert.alert('Masalı sil', 'Bu masalı cihaz geçmişinden kaldırmak istiyor musunuz?', [
@@ -120,8 +138,72 @@ export default function StoryHistoryScreen() {
             </View>
           </GlassCard>
         ) : (
+          <>
+            <View style={styles.filterContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterScrollContent}
+              >
+                <TouchableOpacity
+                  onPress={() => setActiveFilter('all')}
+                  style={[
+                    styles.filterChip,
+                    activeFilter === 'all' && styles.filterChipActive,
+                    { borderColor: activeFilter === 'all' ? 'rgba(255,127,80,0.3)' : colors.inputBorder },
+                  ]}
+                >
+                  <Text style={[styles.filterChipText, { color: activeFilter === 'all' ? Colors.primary[700] : colors.textSecondary }]}>
+                    Tümü ({history.length})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setActiveFilter('favorites')}
+                  style={[
+                    styles.filterChip,
+                    activeFilter === 'favorites' && styles.filterChipActive,
+                    { borderColor: activeFilter === 'favorites' ? 'rgba(255,127,80,0.3)' : colors.inputBorder },
+                  ]}
+                >
+                  <Text style={[styles.filterChipText, { color: activeFilter === 'favorites' ? Colors.primary[700] : colors.textSecondary }]}>
+                    ★ Favoriler ({favoriteCount})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setActiveFilter('audio')}
+                  style={[
+                    styles.filterChip,
+                    activeFilter === 'audio' && styles.filterChipActive,
+                    { borderColor: activeFilter === 'audio' ? 'rgba(255,127,80,0.3)' : colors.inputBorder },
+                  ]}
+                >
+                  <Text style={[styles.filterChipText, { color: activeFilter === 'audio' ? Colors.primary[700] : colors.textSecondary }]}>
+                    🎧 Sesli ({audioCount})
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
+            {filteredHistory.length === 0 ? (
+              <GlassCard>
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyEmoji}>{activeFilter === 'favorites' ? '⭐' : '🎧'}</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                    {activeFilter === 'favorites' ? 'Henüz favori masal yok' : 'Henüz sesli masal yok'}
+                  </Text>
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    {activeFilter === 'favorites'
+                      ? 'Beğendiğiniz masalları favorilere ekleyerek buradan hızlıca erişebilirsiniz.'
+                      : 'Sesli ürettiğiniz masallar burada görünecek.'}
+                  </Text>
+                  <Button title="Tüm Masalları Göster" onPress={() => setActiveFilter('all')} variant="secondary" fullWidth style={{ marginTop: 8 }} />
+                </View>
+              </GlassCard>
+            ) : (
           <View style={styles.historyList}>
-            {history.map((story) => {
+            {filteredHistory.map((story) => {
               const isExpanded = expandedStoryId === story.id;
 
               return (
@@ -203,6 +285,8 @@ export default function StoryHistoryScreen() {
               );
             })}
           </View>
+            )}
+          </>
         )}
       </ScrollView>
     </GradientBackground>
@@ -233,6 +317,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 36,
     gap: 12,
+  },
+  filterContainer: {
+    marginHorizontal: -16,
+    marginBottom: 16,
+  },
+  filterScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(255,127,80,0.12)',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   loadingText: {
     fontSize: 14,
