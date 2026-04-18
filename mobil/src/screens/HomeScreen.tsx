@@ -134,8 +134,7 @@ export default function HomeScreen() {
 
   const handleGenerate = async () => {
     if (!user || !session) {
-      setError('Masal üretmek için giriş yapmalısınız.');
-      setTimeout(() => navigation.navigate('Login'), 2000);
+      setError('Masal üretmek için giriş yapmalısınız. Hazır olduğunuzda giriş ekranına geçebilirsiniz.');
       return;
     }
 
@@ -146,7 +145,6 @@ export default function HomeScreen() {
 
     setLoading(true);
     setError(null);
-    setResult(null);
     setGenerationStatus('Masal kurgulanıyor...');
 
     try {
@@ -461,6 +459,15 @@ export default function HomeScreen() {
           {error && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
+              {!user ? (
+                <Button
+                  title="Giriş Ekranına Git"
+                  onPress={() => navigation.navigate('Login')}
+                  variant="secondary"
+                  fullWidth
+                  style={{ marginTop: 10 }}
+                />
+              ) : null}
             </View>
           )}
         </GlassCard>
@@ -503,10 +510,7 @@ export default function HomeScreen() {
 
             <Button
               title="🔄 Yeni Masal Üret"
-              onPress={() => {
-                setResult(null);
-                handleGenerate();
-              }}
+              onPress={handleGenerate}
               variant="secondary"
               fullWidth
             />
