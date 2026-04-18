@@ -584,6 +584,16 @@ export default function PricingScreen() {
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>Ücretli planlar artık doğrudan backend satın alma çağrısı yapmaz. Store SKU tanımları ve backend receipt doğrulama tamamlandığında aynı ekran üzerinden native satın alma açılacaktır.</Text>
           <Text style={[styles.infoContact, { color: colors.textMuted }]}>Sorularınız için: destek@masalkutusu.com</Text>
         </GlassCard>
+
+        <GlassCard style={styles.manageCard}>
+          <Text style={[styles.manageTitle, { color: colors.text }]}>Üyeliğinizi nasıl yönetirsiniz?</Text>
+          <View style={styles.manageSteps}>
+            <Text style={[styles.manageStep, { color: colors.textSecondary }]}>1. Satın alma, yenileme ve iptal işlemleri uygulama mağazanız üzerinden yönetilir.</Text>
+            <Text style={[styles.manageStep, { color: colors.textSecondary }]}>2. Mevcut satın alımınız görünmüyorsa önce “Satın Alımları Geri Yükle” seçeneğini kullanın.</Text>
+            <Text style={[styles.manageStep, { color: colors.textSecondary }]}>3. Paket değişikliği sonrası bilgiler güncellenmediyse “Bilgileri Yenile” ile mağaza durumunu tekrar çekin.</Text>
+          </View>
+          <Text style={[styles.manageHelper, { color: colors.textMuted }]}>İptal ve yenileme ayarları Apple App Store veya Google Play hesabınızdan yönetilir.</Text>
+        </GlassCard>
       </ScrollView>
     </GradientBackground>
   );
@@ -721,4 +731,9 @@ const styles = StyleSheet.create({
   infoTitle: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
   infoText: { fontSize: 14, lineHeight: 22, marginBottom: 12 },
   infoContact: { fontSize: 13 },
+  manageCard: { marginTop: 12, gap: 12 },
+  manageTitle: { fontSize: 18, fontWeight: '700' },
+  manageSteps: { gap: 8 },
+  manageStep: { fontSize: 13, lineHeight: 20 },
+  manageHelper: { fontSize: 12, lineHeight: 18 },
 });
