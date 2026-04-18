@@ -23,7 +23,7 @@ Uygulama son iterasyonlarda güvenilirlik, görünür hata yönetimi ve retentio
 | [x] P2 | Analytics event’lerini gerçek telemetry aracına bağla | Temel event noktaları artık Sentry breadcrumb ve seçili hata mesajlarıyla merkezi görünürlüğe bağlandı | 0.5-1 gün | `src/lib/analytics.ts` |
 | [x] P2 | Story history için filtreleme ekle | Favoriler, sesli kayıtlar ve tüm içerikler arasında hızlı geçiş sağlayan filtre chip’leri eklendi | 0.5-1 gün | `src/screens/StoryHistoryScreen.tsx` |
 | [x] P2 | Dashboard transaction filtreleme ekle | İşlem geçmişi artık işlem türlerine göre hızlı filtrelenebiliyor; tür bazlı geçiş ve boş durumlar görünür hale geldi | 0.5-1 gün | `src/screens/DashboardScreen.tsx` |
-| P3 | Pricing sonrası success state’i daha kalıcı hale getir | Şu an feedback kartı var; daha belirgin başarı rozeti veya geçici state güveni artırabilir | 2-3 saat | `src/screens/PricingScreen.tsx` |
+| [x] P3 | Pricing sonrası success state’i daha kalıcı hale getir | Başarılı satın alma sonrası yeşil success state, daha net metin, başarı ikonu ve gecikmeli dönüş ile güven artırıldı | 2-3 saat | `src/screens/PricingScreen.tsx` |
 
 ## En Önemli Riskler
 
@@ -51,6 +51,7 @@ Uygulama son iterasyonlarda güvenilirlik, görünür hata yönetimi ve retentio
 3. [x] Pricing/Dashboard self-service yönlendirme derinliği
 4. [x] Analytics event’lerini merkezi görünürlüğe bağlama
 5. [x] Story history ve transaction filtreleme
+6. [x] Pricing success state kalıcılaştırma
 
 ## İlk Uygulama Dilimi
 Bu rapordan sonra ilk uygulanacak iş olarak:
