@@ -150,6 +150,18 @@ export default function StoryHistoryScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                      onPress={() => navigation.navigate('CreateStory', {
+                        topic: story.topic,
+                        ageRange: story.ageRange,
+                        length: story.length,
+                        theme: story.theme,
+                      })}
+                      style={[styles.actionButton, { borderColor: colors.inputBorder, backgroundColor: colors.surface }]}
+                    >
+                      <Text style={[styles.actionButtonText, { color: colors.text }]}>Benzerini Üret</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       onPress={() => handleDeleteStory(story)}
                       style={[styles.actionButton, styles.deleteButton]}
                     >

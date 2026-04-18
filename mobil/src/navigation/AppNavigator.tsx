@@ -23,12 +23,20 @@ export type RootStackParamList = {
   Pricing: undefined;
 };
 
+type CreateStoryParams = {
+  topic?: string;
+  ageRange?: '3-5' | '6-8';
+  length?: 'short' | 'medium';
+  theme?: 'friendship' | 'courage' | 'sharing' | 'emotions';
+};
+
 type AppTabParamList = {
-  CreateStory: undefined;
+  CreateStory: CreateStoryParams | undefined;
   History: undefined;
   Dashboard: undefined;
 };
 
+export type { CreateStoryParams };
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 

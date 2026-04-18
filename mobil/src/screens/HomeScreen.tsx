@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, Modal,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { CreateStoryParams } from '../navigation/AppNavigator';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 
@@ -54,6 +55,7 @@ function getGenerationStatusMessage(result: StoryResult | null, loading: boolean
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { user, session } = useAuth();
   const { colors, mode, toggleTheme } = useTheme();
 
@@ -72,10 +74,44 @@ export default function HomeScreen() {
   const [result, setResult] = useState<StoryResult | null>(null);
   const [generationStatus, setGenerationStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const appliedPrefillRef = useRef<string | null>(null);
 
+  const createStoryParams = route.params as CreateStoryParams | undefined;
   const creditsRemaining = subscription?.credits_remaining ?? 0;
   const willUseCredit = Boolean(user && session && topic.trim());
   const generationHint = getGenerationStatusMessage(result, loading) ?? generationStatus;
+
+  useEffect(() => {
+    if (!createStoryParams) {
+      return;
+    }
+
+    const prefillKey = JSON.stringify(createStoryParams);
+    if (appliedPrefillRef.current === prefillKey) {
+      return;
+    }
+
+    appliedPrefillRef.current = prefillKey;
+
+    if (createStoryParams.topic) {
+      setTopic(createStoryParams.topic);
+    }
+
+    if (createStoryParams.ageRange) {
+      setAgeRange(createStoryParams.ageRange);
+    }
+
+    if (createStoryParams.length) {
+      setLength(createStoryParams.length);
+    }
+
+    if (createStoryParams.theme) {
+      setTheme(createStoryParams.theme);
+      setShowAdvanced(true);
+    }
+
+    navigation.setParams?.(undefined);
+  }, [createStoryParams, navigation]);
 
   useEffect(() => {
     const fetchSubscription = async () => {
