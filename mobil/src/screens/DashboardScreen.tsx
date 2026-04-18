@@ -16,7 +16,6 @@ import { GradientBackground } from '../components/GradientBackground';
 import { GlassCard } from '../components/GlassCard';
 import { Button } from '../components/Button';
 import { Colors, BorderRadius } from '../constants/theme';
-import { API_BASE_URL } from '../constants/config';
 import { supabase } from '../lib/supabase';
 import {
   fetchCurrentSubscriptionWithInitialization,
@@ -531,6 +530,7 @@ export default function DashboardScreen() {
 
         <GlassCard>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>İşlem Geçmişi</Text>
+          <Text style={[styles.transactionIntro, { color: colors.textSecondary }]}>Kredi kullanımı, satın alma, bonus ve iade hareketleri burada açıklamalarıyla birlikte görünür.</Text>
           {transactions.length === 0 ? (
             <Text style={[styles.emptyText, { color: colors.textMuted }]}>{getEmptyTransactionMessage(subscription)}</Text>
           ) : (
@@ -677,6 +677,7 @@ const styles = StyleSheet.create({
   actionTitle: { fontSize: 15, fontWeight: '600' },
   actionSub: { fontSize: 12 },
 
+  transactionIntro: { fontSize: 13, lineHeight: 20, marginBottom: 12 },
   emptyText: { textAlign: 'center', paddingVertical: 24, fontSize: 14 },
   transactionRow: {
     flexDirection: 'row',
