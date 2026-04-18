@@ -56,7 +56,7 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 - [x] Satın alma sonrası self-service üyelik yardım katmanı ekle
 - [x] Üretim ve satın alma olaylarını ölçümle
 - [ ] Transaction geçmişini daha açıklayıcı ve aksiyon odaklı hale getir
-- [ ] Home / Pricing / Dashboard üzerinde kalan küçük polish ve tutarlılık işleri
+- [x] Home / Pricing / Dashboard üzerinde kalan küçük polish ve tutarlılık işleri
 
 ## Önceliklendirilmiş Fırsat Listesi
 
@@ -98,18 +98,19 @@ Bu branch, ücretli üyelik için **temel native billing altyapısını** işlev
 ### Pricing
 - CTA’lar artık plan bazlı ve güven mikro kopyasıyla daha net.
 - Billing sonuç kartları artık başarı/iptal/hata durumlarını daha anlaşılır gösteriyor.
-- Bir sonraki adım, satın alma sonrası yönetim akışını görünürleştirmek.
+- Self-service yardım kartısı ile restore, yenileme ve mağaza yönetimi adımları görünür hale geldi.
 
 ### Home
 - Kredi kullanım etkisi istekten önce daha net gösteriliyor.
 - Upgrade ihtiyacı artık preflight seviyesinde anlaşılabiliyor.
 - Uzun işlem sırasında anlamlı ilerleme hissi mevcut.
 - Giriş gerektiren durumda kullanıcı zorla yönlendirilmiyor; görünür CTA ile karar kullanıcıya bırakılıyor.
+- Başlık ve güven kopyası daha net ve sakin bir tona çekildi.
 
 ### Dashboard
 - Veri yok, kısmi hata ve tam hata durumları daha net ayrışıyor.
 - Özet kartları artık daha fazla yönlendirici yardımcı metin taşıyor.
-- Bir sonraki iyileştirme, transaction satırlarını daha açıklayıcı hale getirmek olabilir.
+- Transaction satırları artık açıklayıcı yardımcı metinler ve aksiyon linkleri içeriyor.
 
 ### Story History
 - Geçmiş artık yalnızca arşiv değil; favorileme ve “Benzerini Üret” ile yeniden kullanım yüzeyi haline geldi.
