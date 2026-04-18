@@ -541,6 +541,16 @@ export default function DashboardScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.transDesc, { color: colors.text }]}>{getTransactionDescription(t)}</Text>
                     <Text style={[styles.transHelper, { color: colors.textSecondary }]}>{getTransactionHelperText(t)}</Text>
+                    {t.type === 'usage' ? (
+                      <TouchableOpacity onPress={handleCreateStory}>
+                        <Text style={styles.transactionActionLink}>Yeni masal oluştur →</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    {t.type === 'purchase' ? (
+                      <TouchableOpacity onPress={handleOpenPricing}>
+                        <Text style={styles.transactionActionLink}>Paketleri tekrar incele →</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     <View style={styles.transMetaRow}>
                       <Text style={[styles.transDate, { color: colors.textMuted }]}>
                         {new Date(t.created_at).toLocaleDateString('tr-TR')}
@@ -677,6 +687,7 @@ const styles = StyleSheet.create({
   },
   transDesc: { fontSize: 14, fontWeight: '500', marginBottom: 4 },
   transHelper: { fontSize: 12, lineHeight: 18, marginBottom: 6 },
+  transactionActionLink: { color: Colors.primary[500], fontSize: 12, fontWeight: '700', marginBottom: 6 },
   transMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   transDate: { fontSize: 12 },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: BorderRadius.full },

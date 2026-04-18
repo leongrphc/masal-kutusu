@@ -598,6 +598,7 @@ export default function PricingScreen() {
             <Text style={[styles.manageStep, { color: colors.textSecondary }]}>3. Paket değişikliği sonrası bilgiler güncellenmediyse “Bilgileri Yenile” ile mağaza durumunu tekrar çekin.</Text>
           </View>
           <Text style={[styles.manageHelper, { color: colors.textMuted }]}>İptal ve yenileme ayarları Apple App Store veya Google Play hesabınızdan yönetilir.</Text>
+          <Text style={[styles.manageHelper, { color: colors.textMuted }]}>Sorun yaşarsanız önce geri yükleme ve yenileme adımlarını deneyin, sonra destek ekibiyle paylaşın.</Text>
         </GlassCard>
       </ScrollView>
     </GradientBackground>

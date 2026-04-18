@@ -311,8 +311,9 @@ export default function HomeScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.badge}
           >
-            <Text style={styles.badgeText}>⭐ Yapay Zeka ile desteklenmiş çocuklara özel masallar.</Text>
+            <Text style={styles.badgeText}>⭐ Yapay zeka destekli, çocuklara özel sesli masallar.</Text>
           </LinearGradient>
+        <Text style={[styles.headerTrustCopy, { color: colors.textMuted }]}>Yaşa uygun dil, reklamsız deneyim ve hızlı sesli anlatım tek akışta hazırlanır.</Text>
         </View>
 
         {/* Input Card */}
@@ -654,6 +655,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerSubtitle: { fontSize: 16, textAlign: 'center', marginBottom: 12 },
+  headerTrustCopy: { fontSize: 12, textAlign: 'center', marginTop: 12, lineHeight: 18 },
   badge: {
     paddingHorizontal: 16,
     paddingVertical: 8,
