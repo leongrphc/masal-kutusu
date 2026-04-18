@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { GradientBackground } from '../components/GradientBackground';
 import { GlassCard } from '../components/GlassCard';
+import { Button } from '../components/Button';
 import { Colors, BorderRadius } from '../constants/theme';
 import {
   SUBSCRIPTION_PLANS,
@@ -38,6 +40,43 @@ interface FeedbackState {
   message: string;
 }
 
+function getPricingLoadErrorMessage(subscriptionFailed: boolean, billingFailed: boolean) {
+  if (subscriptionFailed && billingFailed) {
+    return 'Üyelik ve mağaza bilgileri güncellenemedi. Bağlantınızı kontrol edip tekrar deneyin.';
+  }
+
+  if (subscriptionFailed) {
+    return 'Üyelik bilgileri güncellenemedi. Bağlantınızı kontrol edip tekrar deneyin.';
+  }
+
+  return 'Mağaza bilgileri güncellenemedi. Lütfen tekrar deneyin.';
+}
+
+function getPaidPlanCta(planId: PaidSubscriptionPlanId) {
+  switch (planId) {
+    case 'basic':
+      return 'Temel Pakete Geç';
+    case 'premium':
+      return 'Premium’a Geç';
+    case 'unlimited':
+      return 'Sınırsız’a Geç';
+    default:
+      return 'Store ile Satın Al';
+  }
+}
+
+function getPlanTrustCopy(planId: PaidSubscriptionPlanId) {
+  if (planId === 'basic') {
+    return 'Bugün seçtiğiniz paket store üzerinden başlatılır. Yenileme ve iptal işlemlerini daha sonra mağaza hesabınızdan yönetebilirsiniz.';
+  }
+
+  if (planId === 'premium') {
+    return 'En çok tercih edilen plan. Ödeme store üzerinden güvenli şekilde alınır; yenileme ve iptal ayarları mağaza hesabınızdan yönetilir.';
+  }
+
+  return 'Yüksek kullanım için tasarlandı. Satın alma, yenileme ve iptal işlemleri uygulama mağazanız üzerinden güvenli şekilde yönetilir.';
+}
+
 export default function PricingScreen() {
   const navigation = useNavigation<any>();
   const { user, session } = useAuth();
@@ -45,7 +84,9 @@ export default function PricingScreen() {
 
   const [loading, setLoading] = useState<string | null>(null);
   const [screenLoading, setScreenLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [billingAvailability, setBillingAvailability] = useState<
     Partial<Record<PaidSubscriptionPlanId, BillingPlanAvailability>>
@@ -56,67 +97,77 @@ export default function PricingScreen() {
       return null;
     }
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
+    const response = await fetch(`${API_BASE_URL}/api/subscription/current?t=${Date.now()}`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
 
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
-      return (data.subscription ?? null) as Subscription | null;
-    } catch (err) {
-      console.error('Subscription fetch error:', err);
-      return null;
+    if (!response.ok) {
+      throw new Error('Subscription fetch failed');
     }
+
+    const data = await response.json();
+    return (data.subscription ?? null) as Subscription | null;
   }, [session]);
 
-  const fetchBillingAvailability = useCallback(async () => {
-    try {
-      return await getAllBillingAvailability();
-    } catch (err) {
-      console.error('Billing availability error:', err);
-      return {} as Partial<Record<PaidSubscriptionPlanId, BillingPlanAvailability>>;
-    }
+  const fetchBillingAvailability = useCallback(async (forceRefresh = false) => {
+    return getAllBillingAvailability({ forceRefresh });
   }, []);
+
+  const loadScreenData = useCallback(async ({ refreshing: isRefreshing = false, forceRefresh = false } = {}) => {
+    try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setScreenLoading(true);
+      }
+      setLoadError(null);
+
+      const [subscriptionResult, availabilityResult] = await Promise.allSettled([
+        fetchSubscription(),
+        fetchBillingAvailability(forceRefresh),
+      ]);
+
+      if (subscriptionResult.status === 'fulfilled') {
+        setSubscription(subscriptionResult.value);
+      } else {
+        console.error('Subscription fetch error:', subscriptionResult.reason);
+      }
+
+      if (availabilityResult.status === 'fulfilled') {
+        setBillingAvailability(availabilityResult.value);
+      } else {
+        console.error('Billing availability error:', availabilityResult.reason);
+      }
+
+      if (subscriptionResult.status === 'rejected' || availabilityResult.status === 'rejected') {
+        setLoadError(
+          getPricingLoadErrorMessage(
+            subscriptionResult.status === 'rejected',
+            availabilityResult.status === 'rejected',
+          ),
+        );
+      }
+    } catch (err) {
+      console.error('Pricing screen load error:', err);
+      setLoadError('Paket bilgileri güncellenemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setScreenLoading(false);
+      setRefreshing(false);
+    }
+  }, [fetchBillingAvailability, fetchSubscription]);
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      void (async () => {
-        setScreenLoading(true);
-        const [nextSubscription, nextAvailability] = await Promise.all([
-          fetchSubscription(),
-          fetchBillingAvailability(),
-        ]);
-
-        if (!isActive) {
-          return;
-        }
-
-        setSubscription(nextSubscription);
-        setBillingAvailability(nextAvailability);
-        setScreenLoading(false);
-      })();
-
-      return () => {
-        isActive = false;
-      };
-    }, [fetchBillingAvailability, fetchSubscription]),
+      void loadScreenData();
+    }, [loadScreenData]),
   );
 
-  const refreshScreenData = useCallback(async () => {
-    const [nextSubscription, nextAvailability] = await Promise.all([
-      fetchSubscription(),
-      fetchBillingAvailability(),
-    ]);
+  const refreshScreenData = useCallback(async (forceRefresh = false) => {
+    await loadScreenData({ forceRefresh });
+  }, [loadScreenData]);
 
-    setSubscription(nextSubscription);
-    setBillingAvailability(nextAvailability);
-  }, [fetchBillingAvailability, fetchSubscription]);
+  const handleRefresh = () => void loadScreenData({ refreshing: true, forceRefresh: true });
+  const handleRetry = () => void loadScreenData({ forceRefresh: true });
 
   const handlePurchase = async (planId: SubscriptionPlanId) => {
     if (!user || !session) {
@@ -138,7 +189,7 @@ export default function PricingScreen() {
         message: result.message,
       });
 
-      await refreshScreenData();
+      await refreshScreenData(true);
 
       if (result.status === 'started') {
         navigation.goBack();
@@ -164,7 +215,7 @@ export default function PricingScreen() {
         message: result.message,
       });
 
-      await refreshScreenData();
+      await refreshScreenData(true);
     } finally {
       setLoading(null);
     }
@@ -202,7 +253,7 @@ export default function PricingScreen() {
       return 'Giriş Yap ve Satın Al';
     }
 
-    return 'Store ile Satın Al';
+    return getPaidPlanCta(planId as PaidSubscriptionPlanId);
   };
 
   const currentPlanName = subscription ? SUBSCRIPTION_PLANS[subscription.plan].name : null;
@@ -214,6 +265,13 @@ export default function PricingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={(
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={Colors.primary[500]}
+          />
+        )}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: colors.textSecondary }]}>← Geri Dön</Text>
@@ -224,6 +282,20 @@ export default function PricingScreen() {
           <Text style={[styles.headerSub, { color: colors.textSecondary }]}>İhtiyacınıza göre plan seçin. Ücretli planlar artık native store billing altyapısı üzerinden hazırlanıyor.</Text>
         </View>
 
+        {loadError ? (
+          <GlassCard style={styles.loadErrorCard}>
+            <Text style={styles.loadErrorTitle}>Bağlantı sorunu</Text>
+            <Text style={styles.loadErrorText}>{loadError}</Text>
+            <Button
+              title="Tekrar Dene"
+              onPress={handleRetry}
+              variant="secondary"
+              loading={screenLoading}
+              style={styles.retryButton}
+            />
+          </GlassCard>
+        ) : null}
+
         <GlassCard style={styles.summaryCard}>
           {screenLoading ? (
             <View style={styles.summaryLoadingState}>
@@ -233,7 +305,7 @@ export default function PricingScreen() {
           ) : user && subscription ? (
             <>
               <View style={styles.summaryHeader}>
-                <View>
+                <View style={styles.summaryHeaderCopy}>
                   <Text style={[styles.summaryTitle, { color: colors.text }]}>Mevcut Paketiniz</Text>
                   <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Şu an {currentPlanName} planını kullanıyorsunuz.</Text>
                 </View>
@@ -242,31 +314,49 @@ export default function PricingScreen() {
                 </View>
               </View>
               <Text style={[styles.summaryHelper, { color: colors.textMuted }]}>Yükseltme store satın alma akışıyla ilerleyecek. Daha düşük pakete geçiş bu ekranda kapalıdır.</Text>
-              <TouchableOpacity
-                onPress={handleRestorePurchases}
-                disabled={loading === 'restore'}
-                style={[
-                  styles.restoreButton,
-                  { borderColor: colors.inputBorder, backgroundColor: colors.surface },
-                ]}
-              >
-                {loading === 'restore' ? (
-                  <ActivityIndicator size="small" color={Colors.primary[500]} />
-                ) : (
-                  <Text style={[styles.restoreButtonText, { color: colors.text }]}>Satın Alımları Geri Yükle</Text>
-                )}
-              </TouchableOpacity>
+              <View style={styles.summaryActions}>
+                <Button
+                  title="Bilgileri Yenile"
+                  onPress={handleRefresh}
+                  variant="secondary"
+                  loading={refreshing}
+                  style={styles.summaryActionButton}
+                />
+                <TouchableOpacity
+                  onPress={handleRestorePurchases}
+                  disabled={loading === 'restore'}
+                  style={[
+                    styles.restoreButton,
+                    { borderColor: colors.inputBorder, backgroundColor: colors.surface },
+                  ]}
+                >
+                  {loading === 'restore' ? (
+                    <ActivityIndicator size="small" color={Colors.primary[500]} />
+                  ) : (
+                    <Text style={[styles.restoreButtonText, { color: colors.text }]}>Satın Alımları Geri Yükle</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </>
           ) : (
             <>
               <Text style={[styles.summaryTitle, { color: colors.text }]}>Satın almak için giriş yapın</Text>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>Önce hesabınıza giriş yapın. Ardından ücretsiz planı kullanabilir veya mağaza tarafı hazır olan planları seçebilirsiniz.</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('Login')}
-                style={[styles.loginPromptButton, { borderColor: colors.inputBorder, backgroundColor: colors.surface }]}
-              >
-                <Text style={[styles.loginPromptButtonText, { color: colors.text }]}>Giriş Ekranına Git</Text>
-              </TouchableOpacity>
+              <View style={styles.summaryActions}>
+                <Button
+                  title="Bilgileri Yenile"
+                  onPress={handleRefresh}
+                  variant="secondary"
+                  loading={refreshing}
+                  style={styles.summaryActionButton}
+                />
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Login')}
+                  style={[styles.loginPromptButton, { borderColor: colors.inputBorder, backgroundColor: colors.surface }]}
+                >
+                  <Text style={[styles.loginPromptButtonText, { color: colors.text }]}>Giriş Ekranına Git</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </GlassCard>
@@ -374,6 +464,14 @@ export default function PricingScreen() {
                 ))}
               </View>
 
+              {planId !== 'free' && availability?.canPurchase ? (
+                <View style={styles.trustBox}>
+                  <Text style={[styles.trustText, { color: colors.textSecondary }]}>
+                    {getPlanTrustCopy(planId as PaidSubscriptionPlanId)}
+                  </Text>
+                </View>
+              ) : null}
+
               <TouchableOpacity
                 onPress={() => handlePurchase(planId)}
                 disabled={isDisabled}
@@ -436,14 +534,21 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 30, fontWeight: '700', color: Colors.primary[500], marginBottom: 8 },
   headerSub: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
 
+  loadErrorCard: { marginBottom: 16, gap: 12 },
+  loadErrorTitle: { fontSize: 16, fontWeight: '700', color: Colors.error },
+  loadErrorText: { fontSize: 14, lineHeight: 20, color: Colors.error },
+  retryButton: { alignSelf: 'flex-start' },
+
   summaryCard: { marginBottom: 16, gap: 12 },
   summaryLoadingState: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   summaryHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  summaryHeaderCopy: { flex: 1 },
   summaryTitle: { fontSize: 20, fontWeight: '700' },
   summaryText: { fontSize: 14, lineHeight: 21 },
   summaryHelper: { fontSize: 12, lineHeight: 18 },
+  summaryActions: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 8 },
+  summaryActionButton: { alignSelf: 'flex-start' },
   restoreButton: {
-    marginTop: 8,
     borderWidth: 1,
     borderRadius: BorderRadius.md,
     minHeight: 44,
@@ -455,10 +560,10 @@ const styles = StyleSheet.create({
   summaryBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full, alignSelf: 'flex-start' },
   summaryBadgeText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
   loginPromptButton: {
-    marginTop: 4,
     borderWidth: 1,
     borderRadius: BorderRadius.md,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
   },
   loginPromptButtonText: { fontSize: 14, fontWeight: '600' },
@@ -519,6 +624,14 @@ const styles = StyleSheet.create({
   featureCheck: { fontSize: 14, marginTop: 1 },
   featureText: { fontSize: 14, flex: 1, lineHeight: 20 },
 
+  trustBox: {
+    backgroundColor: 'rgba(59,130,246,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.16)',
+    borderRadius: BorderRadius.md,
+    padding: 12,
+  },
+  trustText: { fontSize: 12, lineHeight: 18 },
   purchaseContainer: { marginTop: 4 },
   purchaseBtn: {
     paddingVertical: 14,
