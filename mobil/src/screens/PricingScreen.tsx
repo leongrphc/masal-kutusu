@@ -30,6 +30,7 @@ import {
   type BillingPlanAvailability,
 } from '../lib/billing';
 import { fetchCurrentSubscription } from '../lib/subscription';
+import { trackEvent } from '../lib/analytics';
 
 interface Subscription {
   plan: SubscriptionPlanId;
@@ -236,9 +237,11 @@ export default function PricingScreen() {
 
     setLoading(planId);
     setFeedback(null);
+    trackEvent('purchase_started', { planId });
 
     try {
       const result = await startPlanPurchase(planId);
+      trackEvent('purchase_result', { planId, status: result.status });
       setFeedback(
         result.status === 'started'
           ? {
@@ -267,9 +270,11 @@ export default function PricingScreen() {
 
     setLoading('restore');
     setFeedback(null);
+    trackEvent('restore_started');
 
     try {
       const result = await restoreBillingPurchases();
+      trackEvent('restore_result', { status: result.status });
       setFeedback(
         result.status === 'started'
           ? {

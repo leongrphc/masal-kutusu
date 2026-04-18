@@ -18,6 +18,7 @@ import { Colors, BorderRadius } from '../constants/theme';
 import { API_BASE_URL, EXAMPLE_TOPICS } from '../constants/config';
 import { saveStoryToHistory } from '../lib/storyHistory';
 import { fetchCurrentSubscription } from '../lib/subscription';
+import { trackEvent } from '../lib/analytics';
 
 interface StoryResult {
   story: string;
@@ -134,6 +135,7 @@ export default function HomeScreen() {
 
   const handleGenerate = async () => {
     if (!user || !session) {
+      trackEvent('generate_blocked_not_authenticated');
       setError('Masal üretmek için giriş yapmalısınız. Hazır olduğunuzda giriş ekranına geçebilirsiniz.');
       return;
     }
@@ -144,11 +146,13 @@ export default function HomeScreen() {
     }
 
     if (subscription && subscription.credits_remaining <= 0) {
+      trackEvent('upgrade_modal_opened', { source: 'preflight_generate', creditsRemaining: subscription.credits_remaining });
       setGenerationStatus(null);
       setShowUpgradeModal(true);
       return;
     }
 
+    trackEvent('generate_started', { ageRange, length, theme, hasSession: Boolean(session) });
     setLoading(true);
     setError(null);
     setGenerationStatus('Masal kurgulanıyor...');
@@ -167,6 +171,7 @@ export default function HomeScreen() {
 
       if (!response.ok) {
         if (data.needsUpgrade) {
+          trackEvent('upgrade_modal_opened', { source: 'generate_response' });
           setGenerationStatus(null);
           setShowUpgradeModal(true);
           return;
@@ -176,6 +181,12 @@ export default function HomeScreen() {
 
       setGenerationStatus('Masal tamamlandı, ses ekleniyor...');
       setResult(data);
+      trackEvent('generate_succeeded', {
+        storyLength: data.meta?.storyLength,
+        totalTimeMs: data.meta?.totalTime,
+        storyGenerationTimeMs: data.meta?.storyGenerationTime,
+        ttsGenerationTimeMs: data.meta?.ttsGenerationTime,
+      });
       setGenerationStatus('Masalınız hazır. Sesli anlatımı başlatabilirsiniz.');
       void saveStoryToHistory(user.id, {
         topic: topic.trim(),
@@ -197,6 +208,7 @@ export default function HomeScreen() {
       const nextSubscription = await fetchCurrentSubscription<Subscription>(session.access_token);
       setSubscription(nextSubscription);
     } catch (err: any) {
+      trackEvent('generate_failed', { message: err?.message ?? 'unknown_error' });
       setGenerationStatus(null);
       setError(err.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
@@ -553,6 +565,7 @@ export default function HomeScreen() {
                 <Button
                   title="Paketleri Görüntüle"
                   onPress={() => {
+                    trackEvent('upgrade_modal_cta_clicked', { source: 'home_modal' });
                     setShowUpgradeModal(false);
                     navigation.navigate('Pricing');
                   }}
