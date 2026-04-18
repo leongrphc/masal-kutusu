@@ -620,9 +620,10 @@ const styles = StyleSheet.create({
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   logoEmoji: { fontSize: 28 },
   logoText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: Colors.primary[500],
+    flexShrink: 1,
   },
   navActions: {
     flexDirection: 'row',
@@ -671,9 +672,11 @@ const styles = StyleSheet.create({
   },
   accountBtnText: { color: Colors.white, fontSize: 12, fontWeight: '700' },
   navBtn: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: BorderRadius.full,
+    minHeight: 36,
+    justifyContent: 'center',
   },
   navBtnText: { fontSize: 13, fontWeight: '600' },
 
